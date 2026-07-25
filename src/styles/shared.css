@@ -232,6 +232,29 @@
   color: var(--color-text);
   font-family: inherit;
   font-size: var(--text-base);
+  color-scheme: light dark;
+}
+
+/* <select> nativo herda o tema do SO (GTK) por cima do nosso CSS a menos
+   que a aparência padrão seja removida explicitamente — sem isso, o campo
+   fica ilegível em telas escuras (fundo branco do SO, texto claro nosso). */
+.form select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-text-muted) 50%), linear-gradient(135deg, var(--color-text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) center,
+    calc(100% - 13px) center;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+  padding-right: var(--space-8);
+}
+
+.form option {
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .form textarea {

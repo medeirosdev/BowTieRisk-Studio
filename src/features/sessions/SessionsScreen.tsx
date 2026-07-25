@@ -19,6 +19,7 @@ export function SessionsScreen() {
   const [saving, setSaving] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [renameDescription, setRenameDescription] = useState('');
 
   useEffect(() => {
     void refresh();
@@ -78,7 +79,7 @@ export function SessionsScreen() {
     const trimmed = renameValue.trim();
     if (!trimmed) return;
     try {
-      await renameSession(project.dbPath, session, trimmed, session.description, user);
+      await renameSession(project.dbPath, session, trimmed, renameDescription.trim() || null, user);
       setRenamingId(null);
       await refresh();
     } catch (err) {
@@ -113,12 +114,17 @@ export function SessionsScreen() {
                     void submitRename(session);
                   }}
                 >
-                  <div className="form__row">
-                    <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus />
-                    <button type="submit">{strings.common.save}</button>
+                  <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus />
+                  <textarea
+                    value={renameDescription}
+                    onChange={(e) => setRenameDescription(e.target.value)}
+                    placeholder={strings.sessions.descriptionPlaceholder}
+                  />
+                  <div className="form__actions">
                     <button type="button" className="btn-secondary" onClick={() => setRenamingId(null)}>
                       {strings.common.cancel}
                     </button>
+                    <button type="submit">{strings.common.save}</button>
                   </div>
                 </form>
               ) : (
@@ -135,6 +141,7 @@ export function SessionsScreen() {
                       onClick={() => {
                         setRenamingId(session.id);
                         setRenameValue(session.name);
+                        setRenameDescription(session.description ?? '');
                       }}
                     >
                       {strings.common.rename}

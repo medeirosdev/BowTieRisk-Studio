@@ -33,6 +33,15 @@ export async function resolveProjectDbPath(entry: ProjectIndexEntry): Promise<st
   return join(dir, entry.db_file);
 }
 
+export async function getProject(dbPath: string, projectId: string): Promise<Project> {
+  const db = await getDbAt(dbPath);
+  const [project] = await db.select<Project[]>('SELECT * FROM projects WHERE id = $1', [projectId]);
+  if (!project) {
+    throw new Error(`Projeto não encontrado: ${projectId}`);
+  }
+  return project;
+}
+
 async function uniqueDbFileName(dir: string, base: string): Promise<string> {
   let candidate = `${base}.db`;
   let n = 2;
@@ -97,13 +106,14 @@ export async function openProject(entry: ProjectIndexEntry, user: CurrentUser): 
   return { id: entry.id, name: entry.name, dbPath };
 }
 
-export async function renameProject(dbPath: string, projectId: string, newName: string, user: CurrentUser): Promise<void> {
+export async function renameProject(dbPath: string, projectId: string, newName: string, description: string | null, user: CurrentUser): Promise<void> {
   const db = await getDbAt(dbPath);
   const [before] = await db.select<Project[]>('SELECT * FROM projects WHERE id = $1', [projectId]);
 
   const now = new Date().toISOString();
-  await db.execute('UPDATE projects SET name = $1, updated_by = $2, updated_at = $3 WHERE id = $4', [
+  await db.execute('UPDATE projects SET name = $1, description = $2, updated_by = $3, updated_at = $4 WHERE id = $5', [
     newName,
+    description,
     user.name,
     now,
     projectId,
@@ -114,7 +124,7 @@ export async function renameProject(dbPath: string, projectId: string, newName: 
     entityId: projectId,
     entityLabel: newName,
     before,
-    after: { ...before, name: newName },
+    after: { ...before, name: newName, description },
   });
 
   await updateProjectIndexEntry(projectId, { name: newName });

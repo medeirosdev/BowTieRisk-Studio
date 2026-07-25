@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { createBowtie, deleteBowtie, listBowties } from '../../db/repositories/bowtieRepo';
+import { createBowtie, deleteBowtie, listBowties, updateBowtie } from '../../db/repositories/bowtieRepo';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
 import { useNavStore } from '../../store/navStore';
@@ -22,6 +22,9 @@ export function BowtiesScreen() {
   const [hazard, setHazard] = useState('');
   const [topEvent, setTopEvent] = useState('');
   const [saving, setSaving] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameDescription, setRenameDescription] = useState('');
 
   useEffect(() => {
     void refresh();
@@ -89,6 +92,25 @@ export function BowtiesScreen() {
     }
   }
 
+  async function submitRename(bowtie: Bowtie) {
+    if (!user || !project) return;
+    const trimmed = renameValue.trim();
+    if (!trimmed) return;
+    try {
+      await updateBowtie(
+        project.dbPath,
+        bowtie,
+        { name: trimmed, description: renameDescription.trim() || null, hazard: bowtie.hazard, top_event: bowtie.top_event },
+        user,
+      );
+      setRenamingId(null);
+      await refresh();
+    } catch (err) {
+      console.error(err);
+      setError(strings.common.saveError);
+    }
+  }
+
   if (!project || !sessionId) return null;
 
   return (
@@ -106,15 +128,51 @@ export function BowtiesScreen() {
         <div className="list">
           {bowties.map((bowtie) => (
             <div className="list-item" key={bowtie.id}>
-              <button className="list-item__main" onClick={() => goToEditor(sessionId, sessionName, bowtie.id, bowtie.name)}>
-                <span className="list-item__title">{bowtie.name}</span>
-                <span className="list-item__meta">{bowtie.top_event ?? strings.bowties.noTopEvent}</span>
-              </button>
-              <div className="list-item__actions">
-                <button className="icon-btn icon-btn--danger" onClick={() => void handleDelete(bowtie)}>
-                  {strings.common.delete}
-                </button>
-              </div>
+              {renamingId === bowtie.id ? (
+                <form
+                  className="form"
+                  style={{ flex: 1 }}
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void submitRename(bowtie);
+                  }}
+                >
+                  <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus />
+                  <textarea
+                    value={renameDescription}
+                    onChange={(e) => setRenameDescription(e.target.value)}
+                    placeholder={strings.bowties.descriptionPlaceholder}
+                  />
+                  <div className="form__actions">
+                    <button type="button" className="btn-secondary" onClick={() => setRenamingId(null)}>
+                      {strings.common.cancel}
+                    </button>
+                    <button type="submit">{strings.common.save}</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <button className="list-item__main" onClick={() => goToEditor(sessionId, sessionName, bowtie.id, bowtie.name)}>
+                    <span className="list-item__title">{bowtie.name}</span>
+                    <span className="list-item__meta">{bowtie.top_event ?? strings.bowties.noTopEvent}</span>
+                  </button>
+                  <div className="list-item__actions">
+                    <button
+                      className="icon-btn"
+                      onClick={() => {
+                        setRenamingId(bowtie.id);
+                        setRenameValue(bowtie.name);
+                        setRenameDescription(bowtie.description ?? '');
+                      }}
+                    >
+                      {strings.common.rename}
+                    </button>
+                    <button className="icon-btn icon-btn--danger" onClick={() => void handleDelete(bowtie)}>
+                      {strings.common.delete}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>

@@ -17,12 +17,15 @@ import { toPng } from 'html-to-image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getBowtie } from '../../../db/repositories/bowtieRepo';
 import { listNodePositions, saveNodePosition } from '../../../db/repositories/nodePositionRepo';
+import { reorderPreventiveBarriersFull } from '../../../db/repositories/preventiveBarrierRepo';
+import { reorderMitigativeBarriersFull } from '../../../db/repositories/mitigativeBarrierRepo';
 import { slugify } from '../../../db/slug';
 import { strings } from '../../../i18n/strings.pt-BR';
 import type { CurrentUser } from '../../../store/currentUserStore';
 import { deriveGraph } from './deriveGraph';
 import type { BowtieGraphData } from './deriveGraph';
 import { computeLayout } from './layout';
+import { minimapNodeColor } from './nodeColors';
 import { nodeTypes } from './nodeTypes';
 import { consequenceRepo, mitigativeBarrierRepo, preventiveBarrierRepo, threatRepo } from './repoAdapters';
 import { SidePanel } from './SidePanel';
@@ -31,6 +34,7 @@ import './canvas.css';
 
 const EXPORT_WIDTH = 1600;
 const EXPORT_HEIGHT = 1000;
+const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 
 interface CanvasEditorProps {
   dbPath: string;
@@ -105,6 +109,8 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
     previousNodeCount.current = nodes.length;
   }, [nodes.length, fitView]);
 
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
+
   const handleNodeClick = useCallback((_event: unknown, node: Node<BowtieNodeData>) => {
     setCreatingSide(null);
     setSelectedNodeId(node.id);
@@ -114,12 +120,105 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
     setSelectedNodeId(null);
   }, []);
 
+  const handleClosePanel = useCallback(() => {
+    setSelectedNodeId(null);
+    setCreatingSide(null);
+  }, []);
+
+  // Barreiras não têm posição livre: arrastar uma barreira ao longo da
+  // cadeia reordena (com base na posição X final entre as barreiras irmãs);
+  // ao soltar, o layout recalcula e a barreira volta pra sua coluna exata.
+  // Ameaças/consequências/evento de topo continuam com posição livre.
+  const handleBarrierDragStop = useCallback(
+    async (draggedNode: Node<BowtieNodeData>) => {
+      const data = draggedNode.data;
+      if (data.kind !== 'prevention-barrier' && data.kind !== 'mitigation-barrier') return;
+      if (!graph) return;
+
+      const isPrevention = data.kind === 'prevention-barrier';
+      const parentId = isPrevention ? data.threatId : data.consequenceId;
+
+      const siblingNodes = nodes.filter((n) => n.data.kind === data.kind && (isPrevention ? n.data.kind === 'prevention-barrier' && n.data.threatId === parentId : n.data.kind === 'mitigation-barrier' && n.data.consequenceId === parentId));
+
+      const ordered = siblingNodes
+        .map((n) => {
+          const barrierId = n.data.kind === 'prevention-barrier' || n.data.kind === 'mitigation-barrier' ? n.data.barrier.id : '';
+          return { id: barrierId, x: n.id === draggedNode.id ? draggedNode.position.x : n.position.x };
+        })
+        .sort((a, b) => a.x - b.x)
+        .map((entry) => entry.id);
+
+      const current = (isPrevention ? graph.preventiveBarriersByThreat[parentId] : graph.mitigativeBarriersByConsequence[parentId]) ?? [];
+      const currentIds = current.map((b) => b.id);
+      const changed = ordered.length === currentIds.length && ordered.some((id, i) => id !== currentIds[i]);
+
+      if (changed) {
+        try {
+          if (isPrevention) {
+            await reorderPreventiveBarriersFull(dbPath, ordered, user);
+          } else {
+            await reorderMitigativeBarriersFull(dbPath, ordered, user);
+          }
+        } catch (err) {
+          console.error(err);
+          setError(strings.common.saveError);
+        }
+      }
+      await load();
+    },
+    [dbPath, graph, load, nodes, user],
+  );
+
   const handleNodeDragStop = useCallback(
     (_event: unknown, node: Node<BowtieNodeData>) => {
-      void saveNodePosition(dbPath, bowtieId, node.id, node.position.x, node.position.y);
+      if (node.data.kind === 'prevention-barrier' || node.data.kind === 'mitigation-barrier') {
+        void handleBarrierDragStop(node);
+      } else {
+        void saveNodePosition(dbPath, bowtieId, node.id, node.position.x, node.position.y);
+      }
     },
-    [dbPath, bowtieId],
+    [dbPath, bowtieId, handleBarrierDragStop],
   );
+
+  const handleDeleteSelected = useCallback(async () => {
+    if (!selectedNode) return;
+    const data = selectedNode.data;
+    if (data.kind === 'top-event') return;
+
+    const label = data.kind === 'threat' ? data.threat.label : data.kind === 'consequence' ? data.consequence.label : data.barrier.label;
+    if (!window.confirm(strings.editor.confirmDeleteItem(label))) return;
+
+    try {
+      if (data.kind === 'threat') await threatRepo.remove(dbPath, data.threat, user);
+      else if (data.kind === 'consequence') await consequenceRepo.remove(dbPath, data.consequence, user);
+      else if (data.kind === 'prevention-barrier') await preventiveBarrierRepo.remove(dbPath, data.barrier, user);
+      else if (data.kind === 'mitigation-barrier') await mitigativeBarrierRepo.remove(dbPath, data.barrier, user);
+
+      setSelectedNodeId(null);
+      await load();
+    } catch (err) {
+      console.error(err);
+      setError(strings.common.saveError);
+    }
+  }, [selectedNode, dbPath, user, load]);
+
+  // Atalhos: Esc fecha o painel lateral; Delete exclui o nó selecionado
+  // (ignorado quando o foco está num campo de formulário).
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      const target = event.target;
+      if (target instanceof HTMLElement && EDITABLE_TAGS.has(target.tagName)) return;
+
+      if (event.key === 'Escape') {
+        handleClosePanel();
+      } else if (event.key === 'Delete' && selectedNodeId) {
+        void handleDeleteSelected();
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNodeId, handleClosePanel, handleDeleteSelected]);
 
   async function handleExportPng() {
     if (nodes.length === 0) return;
@@ -149,8 +248,6 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
     }
   }
 
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
-
   if (!graph) {
     return error ? <p className="error-text">{error}</p> : null;
   }
@@ -167,13 +264,14 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
           onNodeClick={handleNodeClick}
           onPaneClick={handlePaneClick}
           onNodeDragStop={handleNodeDragStop}
+          colorMode="system"
           fitView
           minZoom={0.2}
           maxZoom={2}
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
           <Controls showInteractive={false} />
-          <MiniMap pannable zoomable />
+          <MiniMap nodeColor={minimapNodeColor} pannable zoomable />
         </ReactFlow>
 
         <div className="canvas-toolbar">
@@ -203,18 +301,7 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
         {error && <p className="error-text canvas-editor__error">{error}</p>}
       </div>
 
-      <SidePanel
-        dbPath={dbPath}
-        user={user}
-        graph={graph}
-        selectedNode={selectedNode}
-        creatingSide={creatingSide}
-        onClose={() => {
-          setSelectedNodeId(null);
-          setCreatingSide(null);
-        }}
-        onReload={load}
-      />
+      <SidePanel dbPath={dbPath} user={user} graph={graph} selectedNode={selectedNode} creatingSide={creatingSide} onClose={handleClosePanel} onReload={load} />
     </div>
   );
 }

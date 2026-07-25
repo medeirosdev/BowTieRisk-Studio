@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { createProject, deleteProject, listProjects, openProject, renameProject, resolveProjectDbPath } from '../../db/repositories/projectRepo';
+import { createProject, deleteProject, getProject, listProjects, openProject, renameProject, resolveProjectDbPath } from '../../db/repositories/projectRepo';
 import type { ProjectIndexEntry } from '../../db/indexFile';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
@@ -19,6 +19,7 @@ export function ProjectsScreen() {
   const [creating, setCreating] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [renameDescription, setRenameDescription] = useState('');
 
   useEffect(() => {
     void refresh();
@@ -86,9 +87,18 @@ export function ProjectsScreen() {
     }
   }
 
-  function startRename(entry: ProjectIndexEntry) {
+  async function startRename(entry: ProjectIndexEntry) {
     setRenamingId(entry.id);
     setRenameValue(entry.name);
+    setRenameDescription('');
+    try {
+      const dbPath = await resolveProjectDbPath(entry);
+      const project = await getProject(dbPath, entry.id);
+      setRenameDescription(project.description ?? '');
+    } catch (err) {
+      console.error(err);
+      setError(strings.common.loadError);
+    }
   }
 
   async function submitRename(entry: ProjectIndexEntry) {
@@ -97,7 +107,7 @@ export function ProjectsScreen() {
     if (!trimmed) return;
     try {
       const dbPath = await resolveProjectDbPath(entry);
-      await renameProject(dbPath, entry.id, trimmed, user);
+      await renameProject(dbPath, entry.id, trimmed, renameDescription.trim() || null, user);
       setRenamingId(null);
       await refresh();
     } catch (err) {
@@ -130,12 +140,17 @@ export function ProjectsScreen() {
                     void submitRename(entry);
                   }}
                 >
-                  <div className="form__row">
-                    <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus />
-                    <button type="submit">{strings.common.save}</button>
+                  <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus />
+                  <textarea
+                    value={renameDescription}
+                    onChange={(e) => setRenameDescription(e.target.value)}
+                    placeholder={strings.projects.descriptionPlaceholder}
+                  />
+                  <div className="form__actions">
                     <button type="button" className="btn-secondary" onClick={() => setRenamingId(null)}>
                       {strings.common.cancel}
                     </button>
+                    <button type="submit">{strings.common.save}</button>
                   </div>
                 </form>
               ) : (

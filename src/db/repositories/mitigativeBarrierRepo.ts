@@ -76,3 +76,13 @@ export async function reorderMitigativeBarrier(dbPath: string, barriers: Mitigat
   await db.execute('UPDATE mitigative_barriers SET order_index = $1 WHERE id = $2', [a.order_index, b.id]);
   await writeAudit(db, user, { action: 'UPDATE', entityType: 'mitigative_barrier', entityId: a.id, entityLabel: a.label, before: { order_index: a.order_index }, after: { order_index: b.order_index } });
 }
+
+// Reordenação livre (drag no canvas): recebe a nova sequência completa de
+// ids da cadeia e reatribui order_index 0..N-1 nessa ordem.
+export async function reorderMitigativeBarriersFull(dbPath: string, orderedIds: string[], user: CurrentUser): Promise<void> {
+  const db = await getDbAt(dbPath);
+  for (let index = 0; index < orderedIds.length; index += 1) {
+    await db.execute('UPDATE mitigative_barriers SET order_index = $1 WHERE id = $2', [index, orderedIds[index]]);
+  }
+  await writeAudit(db, user, { action: 'UPDATE', entityType: 'mitigative_barrier', entityLabel: 'reorder', after: { order: orderedIds } });
+}
