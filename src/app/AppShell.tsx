@@ -61,7 +61,7 @@ export function AppShell() {
         </div>
       </header>
 
-      <div className="shell__content">
+      <div className={`shell__content${view.screen === 'editor' ? ' shell__content--full' : ''}`}>
         {view.screen === 'projects' && <ProjectsScreen />}
         {view.screen === 'sessions' && <SessionsScreen />}
         {view.screen === 'bowties' && <BowtiesScreen />}

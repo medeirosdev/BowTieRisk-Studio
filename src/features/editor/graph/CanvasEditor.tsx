@@ -1,0 +1,220 @@
+import {
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  ReactFlow,
+  ReactFlowProvider,
+  getNodesBounds,
+  getViewportForBounds,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+} from '@xyflow/react';
+import type { Edge, Node } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { toPng } from 'html-to-image';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getBowtie } from '../../../db/repositories/bowtieRepo';
+import { listNodePositions, saveNodePosition } from '../../../db/repositories/nodePositionRepo';
+import { slugify } from '../../../db/slug';
+import { strings } from '../../../i18n/strings.pt-BR';
+import type { CurrentUser } from '../../../store/currentUserStore';
+import { deriveGraph } from './deriveGraph';
+import type { BowtieGraphData } from './deriveGraph';
+import { computeLayout } from './layout';
+import { nodeTypes } from './nodeTypes';
+import { consequenceRepo, mitigativeBarrierRepo, preventiveBarrierRepo, threatRepo } from './repoAdapters';
+import { SidePanel } from './SidePanel';
+import type { BowtieNodeData } from './types';
+import './canvas.css';
+
+const EXPORT_WIDTH = 1600;
+const EXPORT_HEIGHT = 1000;
+
+interface CanvasEditorProps {
+  dbPath: string;
+  bowtieId: string;
+  user: CurrentUser;
+}
+
+// A instância do React Flow só pode usar useReactFlow() dentro de um
+// ReactFlowProvider — daqui vem a divisão externo/interno.
+export function CanvasEditor(props: CanvasEditorProps) {
+  return (
+    <ReactFlowProvider>
+      <CanvasEditorInner {...props} />
+    </ReactFlowProvider>
+  );
+}
+
+function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
+  const [graph, setGraph] = useState<BowtieGraphData | null>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node<BowtieNodeData>>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [creatingSide, setCreatingSide] = useState<'threat' | 'consequence' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { fitView } = useReactFlow();
+  const previousNodeCount = useRef<number | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [bowtie, threats, consequences, positions] = await Promise.all([
+        getBowtie(dbPath, bowtieId),
+        threatRepo.list(dbPath, bowtieId),
+        consequenceRepo.list(dbPath, bowtieId),
+        listNodePositions(dbPath, bowtieId),
+      ]);
+
+      const preventiveBarriersByThreat = Object.fromEntries(
+        await Promise.all(threats.map(async (t) => [t.id, await preventiveBarrierRepo.list(dbPath, t.id)] as const)),
+      );
+      const mitigativeBarriersByConsequence = Object.fromEntries(
+        await Promise.all(consequences.map(async (c) => [c.id, await mitigativeBarrierRepo.list(dbPath, c.id)] as const)),
+      );
+
+      const nextGraph: BowtieGraphData = { bowtie, threats, preventiveBarriersByThreat, consequences, mitigativeBarriersByConsequence };
+      const { nodes: rawNodes, edges: nextEdges } = deriveGraph(nextGraph);
+      const layouted = computeLayout(nextGraph, rawNodes, positions.map((p) => ({ nodeId: p.node_id, x: p.x, y: p.y })));
+
+      setGraph(nextGraph);
+      setNodes(layouted);
+      setEdges(nextEdges);
+      setError(null);
+    } catch (err) {
+      console.error(err);
+      setError(strings.common.loadError);
+    }
+  }, [dbPath, bowtieId, setNodes, setEdges]);
+
+  useEffect(() => {
+    void load();
+    setSelectedNodeId(null);
+    setCreatingSide(null);
+    previousNodeCount.current = null;
+  }, [load]);
+
+  // Reenquadra a view quando nós são adicionados/removidos, pra um item novo
+  // não ficar invisível fora da área visível (ex.: criar uma ameaça enquanto
+  // o zoom está distante numa parte já cheia do diagrama).
+  useEffect(() => {
+    if (previousNodeCount.current !== null && previousNodeCount.current !== nodes.length) {
+      fitView({ duration: 300 });
+    }
+    previousNodeCount.current = nodes.length;
+  }, [nodes.length, fitView]);
+
+  const handleNodeClick = useCallback((_event: unknown, node: Node<BowtieNodeData>) => {
+    setCreatingSide(null);
+    setSelectedNodeId(node.id);
+  }, []);
+
+  const handlePaneClick = useCallback(() => {
+    setSelectedNodeId(null);
+  }, []);
+
+  const handleNodeDragStop = useCallback(
+    (_event: unknown, node: Node<BowtieNodeData>) => {
+      void saveNodePosition(dbPath, bowtieId, node.id, node.position.x, node.position.y);
+    },
+    [dbPath, bowtieId],
+  );
+
+  async function handleExportPng() {
+    if (nodes.length === 0) return;
+    const viewportEl = document.querySelector('.react-flow__viewport') as HTMLElement | null;
+    if (!viewportEl) return;
+
+    const bounds = getNodesBounds(nodes);
+    const viewport = getViewportForBounds(bounds, EXPORT_WIDTH, EXPORT_HEIGHT, 0.2, 2, 0.1);
+
+    try {
+      const dataUrl = await toPng(viewportEl, {
+        width: EXPORT_WIDTH,
+        height: EXPORT_HEIGHT,
+        style: {
+          width: `${EXPORT_WIDTH}px`,
+          height: `${EXPORT_HEIGHT}px`,
+          transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+        },
+      });
+      const link = document.createElement('a');
+      link.download = `${slugify(graph?.bowtie.name ?? 'bowtie') || 'bowtie'}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error(err);
+      setError(strings.editor.exportError);
+    }
+  }
+
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
+
+  if (!graph) {
+    return error ? <p className="error-text">{error}</p> : null;
+  }
+
+  return (
+    <div className="canvas-editor">
+      <div className="canvas-editor__flow">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={handleNodeClick}
+          onPaneClick={handlePaneClick}
+          onNodeDragStop={handleNodeDragStop}
+          fitView
+          minZoom={0.2}
+          maxZoom={2}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+          <Controls showInteractive={false} />
+          <MiniMap pannable zoomable />
+        </ReactFlow>
+
+        <div className="canvas-toolbar">
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedNodeId(null);
+              setCreatingSide('threat');
+            }}
+          >
+            + {strings.editor.threatNoun}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedNodeId(null);
+              setCreatingSide('consequence');
+            }}
+          >
+            + {strings.editor.consequenceNoun}
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => void handleExportPng()}>
+            {strings.editor.exportPng}
+          </button>
+        </div>
+
+        {error && <p className="error-text canvas-editor__error">{error}</p>}
+      </div>
+
+      <SidePanel
+        dbPath={dbPath}
+        user={user}
+        graph={graph}
+        selectedNode={selectedNode}
+        creatingSide={creatingSide}
+        onClose={() => {
+          setSelectedNodeId(null);
+          setCreatingSide(null);
+        }}
+        onReload={load}
+      />
+    </div>
+  );
+}

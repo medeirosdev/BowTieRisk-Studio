@@ -1,7 +1,8 @@
 .shell {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .shell__header {
@@ -60,6 +61,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  overflow-y: auto;
+}
+
+.shell__content--full {
+  padding: 0;
+  align-items: stretch;
+  overflow: hidden;
 }
 
 .screen {
@@ -196,8 +204,9 @@
   gap: var(--space-3);
 }
 
-.form__row .field {
+.form__row > * {
   flex: 1;
+  min-width: 0;
 }
 
 .field {
@@ -210,9 +219,12 @@
   text-align: left;
 }
 
-.field input,
-.field textarea,
-.field select {
+.form input,
+.form textarea,
+.form select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -222,7 +234,7 @@
   font-size: var(--text-base);
 }
 
-.field textarea {
+.form textarea {
   resize: vertical;
   min-height: 4.5rem;
 }

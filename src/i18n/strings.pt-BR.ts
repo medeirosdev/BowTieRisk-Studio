@@ -25,6 +25,7 @@ export const strings = {
     cancel: 'Cancelar',
     delete: 'Excluir',
     rename: 'Renomear',
+    close: 'Fechar',
     add: 'Adicionar',
     createdBy: 'Criado por',
     loadError: 'Não foi possível carregar os dados.',
@@ -96,5 +97,8 @@ export const strings = {
     barrierLabelRequired: 'Descreva a barreira antes de adicionar.',
     barrierTypePlaceholder: 'Tipo de barreira',
     noBarrierType: 'Tipo não definido',
+    effectivenessLabel: 'Efetividade',
+    exportPng: 'Exportar PNG',
+    exportError: 'Não foi possível exportar a imagem.',
   },
 } as const;
