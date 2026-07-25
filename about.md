@@ -172,14 +172,17 @@ export const BARRIER_TYPE_LABELS: Record<BarrierType, string> = {
   hardware_continuo:      'Hardware Contínuo',
 };
 
-// Efetividade (escala qualitativa simples). A metodologia exige que a barreira
-// seja "efetiva, independente e auditável"; esta escala apoia essa avaliação.
-export const EFFECTIVENESS = ['alta', 'media', 'baixa', 'nao_avaliada'] as const;
-export type Effectiveness = typeof EFFECTIVENESS[number];
+// Efetividade: escala numérica 1 (muito baixa) a 5 (muito alta). A metodologia
+// exige que a barreira seja "efetiva, independente e auditável"; esta escala
+// apoia essa avaliação. `null` = não avaliada.
+export const EFFECTIVENESS_SCALE = [1, 2, 3, 4, 5] as const;
+export type Effectiveness = typeof EFFECTIVENESS_SCALE[number] | null;
 
 export const AUDIT_ACTIONS = ['CREATE','UPDATE','DELETE','OPEN','CLOSE','SYNC','LOCK','UNLOCK'] as const;
 export type AuditAction = typeof AUDIT_ACTIONS[number];
 ```
+
+> **Planos de ação (etapa 7 da metodologia):** já previstos no schema desde a v1 via tabela `action_plans`, referenciando a barreira de forma polimórfica (`barrier_kind` + `barrier_id`). UI fora do MVP (ver Seção 14).
 
 > **Alternativa mais simples** (se um dia quiser algo menos específico de segurança de processo): classificar por `hardware | comportamental | procedimento | organizacional`. Não é o padrão Bow Tie clássico, mas é comum em HSE geral. Fica registrado como opção; o padrão adotado é o CCPS de 5 tipos acima.
 
@@ -256,7 +259,7 @@ CREATE TABLE preventive_barriers (
   barrier_type  TEXT CHECK (barrier_type IN
                   ('hardware_passivo','hardware_ativo','hardware_ativo_humano',
                    'humano_comportamental','hardware_continuo')),
-  effectiveness TEXT CHECK (effectiveness IN ('alta','media','baixa','nao_avaliada')),
+  effectiveness INTEGER CHECK (effectiveness IS NULL OR effectiveness BETWEEN 1 AND 5),
   order_index   INTEGER NOT NULL DEFAULT 0,   -- ordem na cadeia ameaça→topo
   created_by    TEXT NOT NULL, created_at TEXT NOT NULL,
   updated_by    TEXT, updated_at TEXT
@@ -281,11 +284,30 @@ CREATE TABLE mitigative_barriers (
   barrier_type   TEXT CHECK (barrier_type IN
                    ('hardware_passivo','hardware_ativo','hardware_ativo_humano',
                     'humano_comportamental','hardware_continuo')),
-  effectiveness  TEXT CHECK (effectiveness IN ('alta','media','baixa','nao_avaliada')),
+  effectiveness  INTEGER CHECK (effectiveness IS NULL OR effectiveness BETWEEN 1 AND 5),
   order_index    INTEGER NOT NULL DEFAULT 0,   -- ordem na cadeia topo→consequência
   created_by     TEXT NOT NULL, created_at TEXT NOT NULL,
   updated_by     TEXT, updated_at TEXT
 );
+
+-- ============ PLANOS DE AÇÃO (etapa 7 da metodologia Bow Tie) ============
+-- Referencia a barreira de forma polimórfica via (barrier_kind, barrier_id),
+-- já que preventive_barriers e mitigative_barriers são tabelas separadas.
+CREATE TABLE action_plans (
+  id           TEXT PRIMARY KEY,
+  barrier_kind TEXT NOT NULL CHECK (barrier_kind IN ('preventive', 'mitigative')),
+  barrier_id   TEXT NOT NULL,
+  description  TEXT NOT NULL,
+  responsible  TEXT,
+  due_date     TEXT,
+  status       TEXT NOT NULL DEFAULT 'pendente'
+               CHECK (status IN ('pendente', 'em_andamento', 'concluido', 'cancelado')),
+  order_index  INTEGER NOT NULL DEFAULT 0,
+  created_by   TEXT NOT NULL, created_at TEXT NOT NULL,
+  updated_by   TEXT, updated_at TEXT
+);
+
+CREATE INDEX idx_action_plans_barrier ON action_plans(barrier_kind, barrier_id);
 
 -- ============ POSIÇÕES MANUAIS (override opcional do layout) ============
 CREATE TABLE node_positions (
@@ -608,10 +630,12 @@ Não esquecer:
 - ✅ **`barrier_type` = taxonomia canônica CCPS (5 tipos, princípio Detectar–Decidir–Agir):** `hardware_passivo`, `hardware_ativo`, `hardware_ativo_humano`, `humano_comportamental`, `hardware_continuo` (ver 5.1).
 - ✅ **Nome do arquivo `.db` = slug do nome do projeto**, com deduplicação por sufixo `-2`, `-3`… (ver 6.6).
 
+- ✅ **`effectiveness` = escala numérica 1–5** (1 = muito baixa, 5 = muito alta), `NULL` = não avaliada. Substitui a proposta original de string (`alta|media|baixa|nao_avaliada`). Ver `src/types/enums.ts` (`EFFECTIVENESS_SCALE`, `EFFECTIVENESS_LABELS`).
+- ✅ **Backups: manter os últimos 30 por projeto** (proposta original confirmada).
+- ✅ **Planos de ação já previstos no schema desde a v1** (não só na fase 3): tabela `action_plans`, referenciando a barreira de forma polimórfica via `(barrier_kind, barrier_id)` — já que `preventive_barriers` e `mitigative_barriers` são tabelas separadas. UI/fluxo de uso continuam fora do MVP; só o modelo de dados já existe.
+
 ### A confirmar
-- [ ] Valores de `effectiveness`: `alta | media | baixa | nao_avaliada`. OK, ou prefere escala numérica / outro rótulo?
-- [ ] Quantidade de backups a reter por projeto (proposto 30).
-- [ ] Deseja também um campo/aba de **planos de ação** por barreira (etapa 7 da metodologia Bow Tie)? Fora do MVP, mas vale decidir cedo se o modelo já deve prever.
+*(nenhuma pendência no momento)*
 
 ---
 

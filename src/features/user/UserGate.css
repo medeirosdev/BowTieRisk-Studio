@@ -1,0 +1,35 @@
+.user-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.user-gate__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 320px;
+  padding: 2rem;
+}
+
+.user-gate__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.user-gate__error {
+  color: #d33;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.user-gate__notice {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin: 0;
+}
