@@ -1,7 +1,6 @@
 import { LazyStore } from '@tauri-apps/plugin-store';
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { BowtieMark } from '../../components/BowtieMark';
-import { identifyUser } from '../../db/repositories/userRepo';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
 import './UserGate.css';
@@ -18,8 +17,8 @@ const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
 // Gate de identificação (about.md, Seção 8.1): antes de criar/editar
 // qualquer coisa, exige nome + email. Sem senha — é atribuição, não
-// autenticação. O último usuário identificado fica salvo via
-// tauri-plugin-store e é reconhecido automaticamente nas próximas aberturas.
+// autenticação. Fica só local (tauri-plugin-store); cada projeto registra
+// sua própria linha em `users` quando é criado/aberto (projectRepo).
 export function UserGate({ children }: { children: ReactNode }) {
   const user = useCurrentUserStore((state) => state.user);
   const setUser = useCurrentUserStore((state) => state.setUser);
@@ -35,12 +34,7 @@ export function UserGate({ children }: { children: ReactNode }) {
       const store = new LazyStore(SETTINGS_FILE);
       const saved = await store.get<SavedUser>(CURRENT_USER_KEY);
       if (saved && !cancelled) {
-        try {
-          const identified = await identifyUser(saved.name, saved.email);
-          if (!cancelled) setUser(identified);
-        } catch (err) {
-          console.error(err);
-        }
+        setUser(saved);
       }
       if (!cancelled) setLoading(false);
     })();
@@ -66,13 +60,11 @@ export function UserGate({ children }: { children: ReactNode }) {
 
     setError(null);
     try {
-      const identified = await identifyUser(trimmedName, trimmedEmail);
-
       const store = new LazyStore(SETTINGS_FILE);
       await store.set(CURRENT_USER_KEY, { name: trimmedName, email: trimmedEmail } satisfies SavedUser);
       await store.save();
 
-      setUser(identified);
+      setUser({ name: trimmedName, email: trimmedEmail });
     } catch (err) {
       console.error(err);
       setError(strings.userGate.genericError);

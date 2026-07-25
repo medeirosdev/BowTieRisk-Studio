@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 
+// Identidade local (nome + email) — atribuição, não autenticação (about.md,
+// Seção 9). O email é a chave natural do usuário; não há um id global: cada
+// projeto registra sua própria linha em `users` ao ser criado/aberto
+// (projectRepo.touchProjectUser).
 export interface CurrentUser {
-  id: string;
   name: string;
   email: string;
 }

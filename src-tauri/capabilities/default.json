@@ -9,6 +9,8 @@
     "sql:default",
     "sql:allow-execute",
     "fs:default",
+    "fs:allow-exe-write-recursive",
+    "fs:allow-applocaldata-write-recursive",
     "store:default"
   ]
 }
