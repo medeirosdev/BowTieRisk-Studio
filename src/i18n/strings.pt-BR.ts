@@ -12,6 +12,7 @@ export const strings = {
     auditNotice: 'Nome e email serão registrados nas ações para fins de auditoria.',
     nameRequired: 'Informe seu nome.',
     emailRequired: 'Informe um email válido.',
+    genericError: 'Não foi possível salvar seu usuário. Tente novamente.',
   },
   app: {
     title: 'Bow Tie Risk Studio',

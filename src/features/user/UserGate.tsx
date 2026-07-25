@@ -1,5 +1,6 @@
 import { LazyStore } from '@tauri-apps/plugin-store';
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
+import { BowtieMark } from '../../components/BowtieMark';
 import { identifyUser } from '../../db/repositories/userRepo';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
@@ -34,8 +35,12 @@ export function UserGate({ children }: { children: ReactNode }) {
       const store = new LazyStore(SETTINGS_FILE);
       const saved = await store.get<SavedUser>(CURRENT_USER_KEY);
       if (saved && !cancelled) {
-        const identified = await identifyUser(saved.name, saved.email);
-        if (!cancelled) setUser(identified);
+        try {
+          const identified = await identifyUser(saved.name, saved.email);
+          if (!cancelled) setUser(identified);
+        } catch (err) {
+          console.error(err);
+        }
       }
       if (!cancelled) setLoading(false);
     })();
@@ -60,13 +65,18 @@ export function UserGate({ children }: { children: ReactNode }) {
     }
 
     setError(null);
-    const identified = await identifyUser(trimmedName, trimmedEmail);
+    try {
+      const identified = await identifyUser(trimmedName, trimmedEmail);
 
-    const store = new LazyStore(SETTINGS_FILE);
-    await store.set(CURRENT_USER_KEY, { name: trimmedName, email: trimmedEmail } satisfies SavedUser);
-    await store.save();
+      const store = new LazyStore(SETTINGS_FILE);
+      await store.set(CURRENT_USER_KEY, { name: trimmedName, email: trimmedEmail } satisfies SavedUser);
+      await store.save();
 
-    setUser(identified);
+      setUser(identified);
+    } catch (err) {
+      console.error(err);
+      setError(strings.userGate.genericError);
+    }
   }
 
   if (loading) return null;
@@ -75,8 +85,11 @@ export function UserGate({ children }: { children: ReactNode }) {
     return (
       <div className="user-gate">
         <form className="user-gate__form" onSubmit={handleSubmit}>
-          <h1>{strings.userGate.title}</h1>
-          <p>{strings.userGate.subtitle}</p>
+          <div className="user-gate__brand">
+            <BowtieMark />
+            <h1>{strings.userGate.title}</h1>
+          </div>
+          <p className="user-gate__subtitle">{strings.userGate.subtitle}</p>
 
           <label className="user-gate__field">
             {strings.userGate.nameLabel}

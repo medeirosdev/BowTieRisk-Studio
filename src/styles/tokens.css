@@ -1,0 +1,86 @@
+/*
+ * Design tokens — Bow Tie Risk Studio.
+ *
+ * Paleta com viés "blueprint" (azul de desenho técnico) sobre neutros de
+ * ardósia fria, e cores semânticas emprestadas da sinalização industrial de
+ * segurança (âmbar de alerta, vermelho-ferrugem de risco, verde de barreira
+ * efetiva) — nunca usadas como accent, só como estado.
+ */
+
+:root {
+  --font-display: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-card: 0 1px 2px rgba(23, 32, 51, 0.06), 0 8px 24px rgba(23, 32, 51, 0.08);
+
+  /* Superfícies e texto */
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-muted: #eceff3;
+  --color-border: #dce1e8;
+  --color-text: #172033;
+  --color-text-muted: #5c6675;
+
+  /* Accent — azul de desenho técnico */
+  --color-accent: #1f4e9c;
+  --color-accent-hover: #163b79;
+  --color-accent-contrast: #ffffff;
+  --color-accent-soft: #e6ecf9;
+
+  /* Semânticas (sinalização industrial), independentes do accent */
+  --color-danger: #c0432a;
+  --color-danger-soft: #f7e4df;
+  --color-warning: #9a6b0c;
+  --color-warning-soft: #f7edd8;
+  --color-success: #2e7d53;
+  --color-success-soft: #e2f0e7;
+
+  --color-focus-ring: #1f4e9c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f141e;
+    --color-surface: #171f2c;
+    --color-surface-muted: #1e2735;
+    --color-border: #2a3345;
+    --color-text: #e6e9f0;
+    --color-text-muted: #8d96a8;
+
+    --color-accent: #5b8def;
+    --color-accent-hover: #7fa6f5;
+    --color-accent-contrast: #0f141e;
+    --color-accent-soft: #1c2d4d;
+
+    --color-danger: #e2694f;
+    --color-danger-soft: #3a2420;
+    --color-warning: #d9a441;
+    --color-warning-soft: #3a3018;
+    --color-success: #4cae79;
+    --color-success-soft: #1f3327;
+
+    --color-focus-ring: #7fa6f5;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+}
