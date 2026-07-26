@@ -187,6 +187,14 @@
   color: inherit;
   flex: 1;
   padding: 0;
+  user-select: none;
+}
+
+/* Precisa repetir "button.list-item__main" (em vez de só ".list-item__main")
+   pra especificidade vencer a regra global "button:hover" do App.css —
+   sem isso o hover reverte pro azul saturado padrão de qualquer <button>. */
+button.list-item__main:hover {
+  background-color: transparent;
 }
 
 .list-item__main:hover .list-item__title {

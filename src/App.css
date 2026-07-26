@@ -65,6 +65,15 @@ button:hover {
   outline-offset: 2px;
 }
 
+/* Sem isso, a seleção de texto usa o azul padrão do WebKitGTK (sem relação
+   com o tema) — cor saturada demais e sem contraste em nenhum dos temas.
+   --color-accent-soft é o mesmo tom sutil usado em badges/destaques; mantém
+   a cor normal do texto por baixo em vez de trocar por uma cor de contraste. */
+::selection {
+  background-color: var(--color-accent-soft);
+  color: var(--color-text);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
