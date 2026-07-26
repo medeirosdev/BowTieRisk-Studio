@@ -1,5 +1,6 @@
 import { BowtieMark } from '../components/BowtieMark';
 import { closeProject } from '../db/repositories/projectRepo';
+import { AuditScreen } from '../features/audit/AuditScreen';
 import { BowtiesScreen } from '../features/bowties/BowtiesScreen';
 import { EditorScreen } from '../features/editor/EditorScreen';
 import { ProjectsScreen } from '../features/projects/ProjectsScreen';
@@ -19,6 +20,7 @@ export function AppShell() {
   const goToProjects = useNavStore((s) => s.goToProjects);
   const goToSessions = useNavStore((s) => s.goToSessions);
   const goToBowties = useNavStore((s) => s.goToBowties);
+  const goToAudit = useNavStore((s) => s.goToAudit);
   const project = useOpenProjectStore((s) => s.project);
   const setOpenProject = useOpenProjectStore((s) => s.setProject);
 
@@ -88,6 +90,12 @@ export function AppShell() {
               <span>{view.bowtieName}</span>
             </>
           )}
+          {view.screen === 'audit' && (
+            <>
+              <span>/</span>
+              <span>{strings.audit.title}</span>
+            </>
+          )}
         </div>
 
         <div className="shell__user">
@@ -102,13 +110,16 @@ export function AppShell() {
         </div>
       </header>
 
-      {view.screen !== 'projects' && project && user && <StatusBar project={project} user={user} onProjectUpdate={setOpenProject} />}
+      {view.screen !== 'projects' && project && user && (
+        <StatusBar project={project} user={user} onProjectUpdate={setOpenProject} onOpenAudit={goToAudit} />
+      )}
 
       <div className={`shell__content${view.screen === 'editor' ? ' shell__content--full' : ''}`}>
         {view.screen === 'projects' && <ProjectsScreen />}
         {view.screen === 'sessions' && <SessionsScreen />}
         {view.screen === 'bowties' && <BowtiesScreen />}
         {view.screen === 'editor' && <EditorScreen />}
+        {view.screen === 'audit' && <AuditScreen />}
       </div>
     </div>
   );
