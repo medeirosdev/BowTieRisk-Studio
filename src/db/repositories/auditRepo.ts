@@ -22,12 +22,15 @@ export interface AuditFilters {
   to?: string; // ISO, fim do dia
 }
 
-const MAX_ROWS = 300;
+export const MAX_ROWS = 300;
+// Limite bem mais alto só para exportação de relatório — não deve truncar
+// silenciosamente o CSV mesmo que a lista na tela fique em MAX_ROWS.
+const EXPORT_MAX_ROWS = 50_000;
 
 // Visualizador do audit_log (about.md, Seção 8, item 6) — filtrável por
 // usuário, entidade e período. audit_log é append-only e vive dentro de
 // cada projeto, então a consulta é sempre sobre a cópia de trabalho aberta.
-export async function listAuditLog(dbPath: string, filters: AuditFilters): Promise<AuditLogRow[]> {
+export async function listAuditLog(dbPath: string, filters: AuditFilters, limit = MAX_ROWS): Promise<AuditLogRow[]> {
   const db = await getDbAt(dbPath);
   const conditions: string[] = [];
   const params: unknown[] = [];
@@ -54,7 +57,11 @@ export async function listAuditLog(dbPath: string, filters: AuditFilters): Promi
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-  return db.select<AuditLogRow[]>(`SELECT * FROM audit_log ${where} ORDER BY ts DESC LIMIT ${MAX_ROWS}`, params);
+  return db.select<AuditLogRow[]>(`SELECT * FROM audit_log ${where} ORDER BY ts DESC LIMIT ${limit}`, params);
+}
+
+export async function listAuditLogForExport(dbPath: string, filters: AuditFilters): Promise<AuditLogRow[]> {
+  return listAuditLog(dbPath, filters, EXPORT_MAX_ROWS);
 }
 
 export async function listAuditUsers(dbPath: string): Promise<{ name: string; email: string }[]> {

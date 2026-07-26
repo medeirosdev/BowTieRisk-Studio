@@ -127,5 +127,13 @@ export const strings = {
     datePlaceholder: 'AAAA-MM-DD',
     allOption: 'Todos',
     clearFilters: 'Limpar filtros',
+    exportCsv: 'Exportar CSV',
+    exporting: 'Exportando…',
+    exportError: 'Não foi possível exportar o CSV.',
+    summaryTotal: (total: number) => `${total} registro${total === 1 ? '' : 's'}`,
+    summaryByAction: 'Por ação',
+    summaryByUser: 'Por usuário',
+    summaryByDay: 'Por dia',
+    summaryCapped: 'resumo baseado apenas nos registros exibidos, aplique filtros para refinar',
   },
 } as const;

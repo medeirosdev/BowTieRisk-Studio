@@ -1,10 +1,44 @@
-import { useEffect, useState } from 'react';
-import { AuditFilters, AuditLogRow, listAuditEntityTypes, listAuditLog, listAuditUsers } from '../../db/repositories/auditRepo';
+import { useEffect, useMemo, useState } from 'react';
+import { AuditFilters, AuditLogRow, MAX_ROWS, listAuditEntityTypes, listAuditLog, listAuditLogForExport, listAuditUsers } from '../../db/repositories/auditRepo';
+import { auditLogToCsv } from './csv';
+import { slugify } from '../../db/slug';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useNavStore } from '../../store/navStore';
 import { useOpenProjectStore } from '../../store/openProjectStore';
 import { AUDIT_ACTIONS } from '../../types/enums';
 import type { AuditAction } from '../../types/enums';
+
+interface AuditSummary {
+  total: number;
+  byAction: { key: string; count: number }[];
+  byUser: { key: string; count: number }[];
+  byDay: { key: string; count: number }[];
+}
+
+function summarize(rows: AuditLogRow[]): AuditSummary {
+  const byAction = new Map<string, number>();
+  const byUser = new Map<string, number>();
+  const byDay = new Map<string, number>();
+
+  for (const row of rows) {
+    byAction.set(row.action, (byAction.get(row.action) ?? 0) + 1);
+    byUser.set(row.user_name, (byUser.get(row.user_name) ?? 0) + 1);
+    const day = row.ts.slice(0, 10);
+    byDay.set(day, (byDay.get(day) ?? 0) + 1);
+  }
+
+  const toSortedEntries = (map: Map<string, number>) =>
+    Array.from(map.entries())
+      .map(([key, count]) => ({ key, count }))
+      .sort((a, b) => b.count - a.count);
+
+  return {
+    total: rows.length,
+    byAction: toSortedEntries(byAction),
+    byUser: toSortedEntries(byUser),
+    byDay: toSortedEntries(byDay).sort((a, b) => (a.key < b.key ? 1 : -1)),
+  };
+}
 
 function actionBadgeClass(action: AuditAction): string {
   switch (action) {
@@ -44,6 +78,7 @@ export function AuditScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const [userEmail, setUserEmail] = useState('');
   const [entityType, setEntityType] = useState('');
@@ -72,18 +107,21 @@ export function AuditScreen() {
     return () => clearTimeout(timeout);
   }, [project?.dbPath, userEmail, entityType, action, from, to]);
 
+  function buildFilters(): AuditFilters {
+    return {
+      userEmail: userEmail || undefined,
+      entityType: entityType || undefined,
+      action: action || undefined,
+      from: isValidDate(from) ? `${from}T00:00:00.000Z` : undefined,
+      to: isValidDate(to) ? `${to}T23:59:59.999Z` : undefined,
+    };
+  }
+
   async function refresh() {
     if (!project) return;
     setLoading(true);
     try {
-      const filters: AuditFilters = {
-        userEmail: userEmail || undefined,
-        entityType: entityType || undefined,
-        action: action || undefined,
-        from: isValidDate(from) ? `${from}T00:00:00.000Z` : undefined,
-        to: isValidDate(to) ? `${to}T23:59:59.999Z` : undefined,
-      };
-      setRows(await listAuditLog(project.dbPath, filters));
+      setRows(await listAuditLog(project.dbPath, buildFilters()));
       setError(null);
     } catch (err) {
       console.error(err);
@@ -92,6 +130,31 @@ export function AuditScreen() {
       setLoading(false);
     }
   }
+
+  async function handleExportCsv() {
+    if (!project) return;
+    setExporting(true);
+    try {
+      const exportRows = await listAuditLogForExport(project.dbPath, buildFilters());
+      const csv = auditLogToCsv(exportRows);
+      // BOM: sem ele, o Excel no Windows abre CSV UTF-8 assumindo a
+      // codepage do sistema e corrompe acentos (nomes/descrições em PT-BR).
+      const blob = new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `auditoria-${slugify(project.name) || 'projeto'}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      setError(strings.audit.exportError);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  const summary = useMemo(() => summarize(rows), [rows]);
 
   function clearFilters() {
     setUserEmail('');
@@ -113,11 +176,57 @@ export function AuditScreen() {
             <h2>{strings.audit.title}</h2>
             <p>{strings.audit.subtitle(project.name)}</p>
           </div>
-          <button type="button" className="btn-secondary" onClick={goBackFromAudit}>
-            {strings.common.back}
-          </button>
+          <div className="audit-header__actions">
+            <button type="button" className="btn-secondary" onClick={() => void handleExportCsv()} disabled={exporting || rows.length === 0}>
+              {exporting ? strings.audit.exporting : strings.audit.exportCsv}
+            </button>
+            <button type="button" className="btn-secondary" onClick={goBackFromAudit}>
+              {strings.common.back}
+            </button>
+          </div>
         </div>
       </div>
+
+      {rows.length > 0 && (
+        <div className="panel audit-summary">
+          <div className="audit-summary__total">
+            {strings.audit.summaryTotal(summary.total)}
+            {rows.length >= MAX_ROWS && <span className="audit-summary__note"> — {strings.audit.summaryCapped}</span>}
+          </div>
+          <div className="audit-summary__groups">
+            <div className="audit-summary__group">
+              <span className="audit-summary__group-title">{strings.audit.summaryByAction}</span>
+              <div className="audit-summary__badges">
+                {summary.byAction.map((item) => (
+                  <span key={item.key} className={`badge ${actionBadgeClass(item.key as AuditAction)}`}>
+                    {item.key} · {item.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="audit-summary__group">
+              <span className="audit-summary__group-title">{strings.audit.summaryByUser}</span>
+              <div className="audit-summary__badges">
+                {summary.byUser.map((item) => (
+                  <span key={item.key} className="badge badge--neutral">
+                    {item.key} · {item.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="audit-summary__group">
+              <span className="audit-summary__group-title">{strings.audit.summaryByDay}</span>
+              <div className="audit-summary__badges">
+                {summary.byDay.map((item) => (
+                  <span key={item.key} className="badge badge--neutral">
+                    {item.key} · {item.count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="panel">
         <div className="audit-filters">
