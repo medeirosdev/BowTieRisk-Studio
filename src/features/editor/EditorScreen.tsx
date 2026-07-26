@@ -11,5 +11,5 @@ export function EditorScreen() {
 
   if (!project || !bowtieId || !user) return null;
 
-  return <CanvasEditor dbPath={project.dbPath} bowtieId={bowtieId} user={user} />;
+  return <CanvasEditor dbPath={project.dbPath} bowtieId={bowtieId} user={user} readOnly={project.readOnly} />;
 }

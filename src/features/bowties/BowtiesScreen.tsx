@@ -156,21 +156,23 @@ export function BowtiesScreen() {
                     <span className="list-item__title">{bowtie.name}</span>
                     <span className="list-item__meta">{bowtie.top_event ?? strings.bowties.noTopEvent}</span>
                   </button>
-                  <div className="list-item__actions">
-                    <button
-                      className="icon-btn"
-                      onClick={() => {
-                        setRenamingId(bowtie.id);
-                        setRenameValue(bowtie.name);
-                        setRenameDescription(bowtie.description ?? '');
-                      }}
-                    >
-                      {strings.common.rename}
-                    </button>
-                    <button className="icon-btn icon-btn--danger" onClick={() => void handleDelete(bowtie)}>
-                      {strings.common.delete}
-                    </button>
-                  </div>
+                  {!project.readOnly && (
+                    <div className="list-item__actions">
+                      <button
+                        className="icon-btn"
+                        onClick={() => {
+                          setRenamingId(bowtie.id);
+                          setRenameValue(bowtie.name);
+                          setRenameDescription(bowtie.description ?? '');
+                        }}
+                      >
+                        {strings.common.rename}
+                      </button>
+                      <button className="icon-btn icon-btn--danger" onClick={() => void handleDelete(bowtie)}>
+                        {strings.common.delete}
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -178,34 +180,36 @@ export function BowtiesScreen() {
         </div>
       )}
 
-      <div className="panel">
-        <p className="section-title">{strings.bowties.createTitle}</p>
-        <form className="form" onSubmit={handleCreate}>
-          <label className="field">
-            {strings.bowties.nameLabel}
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={strings.bowties.namePlaceholder} />
-          </label>
-          <div className="form__row">
+      {!project.readOnly && (
+        <div className="panel">
+          <p className="section-title">{strings.bowties.createTitle}</p>
+          <form className="form" onSubmit={handleCreate}>
             <label className="field">
-              {strings.bowties.hazardLabel}
-              <input value={hazard} onChange={(e) => setHazard(e.target.value)} placeholder={strings.bowties.hazardPlaceholder} />
+              {strings.bowties.nameLabel}
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={strings.bowties.namePlaceholder} />
             </label>
+            <div className="form__row">
+              <label className="field">
+                {strings.bowties.hazardLabel}
+                <input value={hazard} onChange={(e) => setHazard(e.target.value)} placeholder={strings.bowties.hazardPlaceholder} />
+              </label>
+              <label className="field">
+                {strings.bowties.topEventLabel}
+                <input value={topEvent} onChange={(e) => setTopEvent(e.target.value)} placeholder={strings.bowties.topEventPlaceholder} />
+              </label>
+            </div>
             <label className="field">
-              {strings.bowties.topEventLabel}
-              <input value={topEvent} onChange={(e) => setTopEvent(e.target.value)} placeholder={strings.bowties.topEventPlaceholder} />
+              {strings.bowties.descriptionLabel}
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={strings.bowties.descriptionPlaceholder} />
             </label>
-          </div>
-          <label className="field">
-            {strings.bowties.descriptionLabel}
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={strings.bowties.descriptionPlaceholder} />
-          </label>
-          <div className="form__actions">
-            <button type="submit" disabled={saving}>
-              {strings.bowties.createSubmit}
-            </button>
-          </div>
-        </form>
-      </div>
+            <div className="form__actions">
+              <button type="submit" disabled={saving}>
+                {strings.bowties.createSubmit}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

@@ -39,11 +39,12 @@ interface SidePanelProps {
   graph: BowtieGraphData;
   selectedNode: Node<BowtieNodeData> | null;
   creatingSide: 'threat' | 'consequence' | null;
+  readOnly: boolean;
   onClose: () => void;
   onReload: () => Promise<void> | void;
 }
 
-export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, onClose, onReload }: SidePanelProps) {
+export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, readOnly, onClose, onReload }: SidePanelProps) {
   if (creatingSide) {
     return (
       <aside className="side-panel">
@@ -64,7 +65,7 @@ export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, onC
   return (
     <aside className="side-panel">
       {selectedNode.data.kind === 'top-event' && (
-        <TopEventPanel dbPath={dbPath} user={user} bowtie={graph.bowtie} onSaved={onReload} onClose={onClose} />
+        <TopEventPanel dbPath={dbPath} user={user} bowtie={graph.bowtie} readOnly={readOnly} onSaved={onReload} onClose={onClose} />
       )}
 
       {selectedNode.data.kind === 'threat' && (
@@ -78,6 +79,7 @@ export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, onC
           barrierRepo={preventiveBarrierRepo}
           itemNounSingular={strings.editor.threatNoun}
           barrierNounSingular={strings.editor.preventiveBarrierNoun}
+          readOnly={readOnly}
           onReload={onReload}
           onClose={onClose}
         />
@@ -94,6 +96,7 @@ export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, onC
           barrierRepo={mitigativeBarrierRepo}
           itemNounSingular={strings.editor.consequenceNoun}
           barrierNounSingular={strings.editor.mitigativeBarrierNoun}
+          readOnly={readOnly}
           onReload={onReload}
           onClose={onClose}
         />
@@ -107,6 +110,7 @@ export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, onC
           barrier={selectedNode.data.barrier}
           barrierRepo={preventiveBarrierRepo}
           barrierNounSingular={strings.editor.preventiveBarrierNoun}
+          readOnly={readOnly}
           onReload={onReload}
           onClose={onClose}
         />
@@ -120,6 +124,7 @@ export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, onC
           barrier={selectedNode.data.barrier}
           barrierRepo={mitigativeBarrierRepo}
           barrierNounSingular={strings.editor.mitigativeBarrierNoun}
+          readOnly={readOnly}
           onReload={onReload}
           onClose={onClose}
         />
@@ -133,12 +138,14 @@ function TopEventPanel({
   dbPath,
   user,
   bowtie,
+  readOnly,
   onSaved,
   onClose,
 }: {
   dbPath: string;
   user: CurrentUser;
   bowtie: Bowtie;
+  readOnly: boolean;
   onSaved: () => Promise<void> | void;
   onClose: () => void;
 }) {
@@ -176,19 +183,21 @@ function TopEventPanel({
           {strings.common.close}
         </button>
       </div>
-      <label className="field">
-        {strings.editor.hazardLabel}
-        <input value={hazard} onChange={(e) => setHazard(e.target.value)} placeholder={strings.editor.hazardPlaceholder} />
-      </label>
-      <label className="field">
-        {strings.editor.topEventLabel}
-        <input value={topEvent} onChange={(e) => setTopEvent(e.target.value)} placeholder={strings.editor.topEventPlaceholder} />
-      </label>
-      <div className="form__actions">
-        <button type="submit" disabled={saving}>
-          {strings.common.save}
-        </button>
-      </div>
+      <fieldset className="form-fieldset" disabled={readOnly}>
+        <label className="field">
+          {strings.editor.hazardLabel}
+          <input value={hazard} onChange={(e) => setHazard(e.target.value)} placeholder={strings.editor.hazardPlaceholder} />
+        </label>
+        <label className="field">
+          {strings.editor.topEventLabel}
+          <input value={topEvent} onChange={(e) => setTopEvent(e.target.value)} placeholder={strings.editor.topEventPlaceholder} />
+        </label>
+        <div className="form__actions">
+          <button type="submit" disabled={saving}>
+            {strings.common.save}
+          </button>
+        </div>
+      </fieldset>
     </form>
   );
 }
@@ -203,6 +212,7 @@ interface LaneItemPanelProps<TItem extends OrderedEntity, TBarrier extends Barri
   barrierRepo: BarrierRepo<TBarrier>;
   itemNounSingular: string;
   barrierNounSingular: string;
+  readOnly: boolean;
   onReload: () => Promise<void> | void;
   onClose: () => void;
 }
@@ -216,6 +226,7 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
   barrierRepo,
   itemNounSingular,
   barrierNounSingular,
+  readOnly,
   onReload,
   onClose,
 }: LaneItemPanelProps<TItem, TBarrier>) {
@@ -294,21 +305,30 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
       </div>
 
       <form className="form" onSubmit={submit}>
-        <input value={label} onChange={(e) => setLabel(e.target.value)} />
-        <div className="form__actions">
-          <button type="button" className="btn-danger" onClick={() => void handleDelete()}>
-            {strings.common.delete}
-          </button>
-          <button type="submit" disabled={saving}>
-            {strings.common.save}
-          </button>
-        </div>
+        <fieldset className="form-fieldset" disabled={readOnly}>
+          <input value={label} onChange={(e) => setLabel(e.target.value)} />
+          <div className="form__actions">
+            <button type="button" className="btn-danger" onClick={() => void handleDelete()}>
+              {strings.common.delete}
+            </button>
+            <button type="submit" disabled={saving}>
+              {strings.common.save}
+            </button>
+          </div>
+        </fieldset>
       </form>
 
       {error && <p className="error-text">{error}</p>}
 
       <div className="side-panel__section-title">{barrierNounSingular}</div>
-      <BarrierManager barriers={barriers} barrierNounSingular={barrierNounSingular} onAdd={handleAddBarrier} onRemove={handleRemoveBarrier} onReorder={handleReorderBarrier} />
+      <BarrierManager
+        barriers={barriers}
+        barrierNounSingular={barrierNounSingular}
+        readOnly={readOnly}
+        onAdd={handleAddBarrier}
+        onRemove={handleRemoveBarrier}
+        onReorder={handleReorderBarrier}
+      />
     </div>
   );
 }
@@ -317,12 +337,13 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
 interface BarrierManagerProps<TBarrier extends BarrierEntity> {
   barriers: TBarrier[];
   barrierNounSingular: string;
+  readOnly: boolean;
   onAdd: (input: BarrierInput) => void;
   onRemove: (barrier: TBarrier) => void;
   onReorder: (id: string, direction: 'up' | 'down') => void;
 }
 
-function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierNounSingular, onAdd, onRemove, onReorder }: BarrierManagerProps<TBarrier>) {
+function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierNounSingular, readOnly, onAdd, onRemove, onReorder }: BarrierManagerProps<TBarrier>) {
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState('');
   const [barrierType, setBarrierType] = useState<BarrierType | ''>('');
@@ -350,17 +371,19 @@ function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierNounS
         <div className="barrier-item" key={barrier.id}>
           <div className="barrier-item__head">
             <span>{barrier.label}</span>
-            <div className="list-item__actions">
-              <button className="icon-btn" disabled={index === 0} onClick={() => onReorder(barrier.id, 'up')}>
-                ↑
-              </button>
-              <button className="icon-btn" disabled={index === barriers.length - 1} onClick={() => onReorder(barrier.id, 'down')}>
-                ↓
-              </button>
-              <button className="icon-btn icon-btn--danger" onClick={() => onRemove(barrier)}>
-                {strings.common.delete}
-              </button>
-            </div>
+            {!readOnly && (
+              <div className="list-item__actions">
+                <button className="icon-btn" disabled={index === 0} onClick={() => onReorder(barrier.id, 'up')}>
+                  ↑
+                </button>
+                <button className="icon-btn" disabled={index === barriers.length - 1} onClick={() => onReorder(barrier.id, 'down')}>
+                  ↓
+                </button>
+                <button className="icon-btn icon-btn--danger" onClick={() => onRemove(barrier)}>
+                  {strings.common.delete}
+                </button>
+              </div>
+            )}
           </div>
           <div className="barrier-item__badges">
             <span className="badge badge--neutral">{barrier.barrier_type ? BARRIER_TYPE_LABELS[barrier.barrier_type] : strings.editor.noBarrierType}</span>
@@ -369,47 +392,48 @@ function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierNounS
         </div>
       ))}
 
-      {adding ? (
-        <form className="form" onSubmit={submit}>
-          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={strings.editor.barrierLabelPlaceholder(barrierNounSingular)} autoFocus />
-          {error && <p className="error-text">{error}</p>}
-          <div className="form__row">
-            <select value={barrierType} onChange={(e) => setBarrierType(e.target.value as BarrierType | '')}>
-              <option value="">{strings.editor.barrierTypePlaceholder}</option>
-              {BARRIER_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {BARRIER_TYPE_LABELS[type]}
-                </option>
-              ))}
-            </select>
-            <select value={effectiveness} onChange={(e) => setEffectiveness(e.target.value)}>
-              <option value="">{EFFECTIVENESS_NOT_EVALUATED_LABEL}</option>
-              {EFFECTIVENESS_SCALE.map((value) => (
-                <option key={value} value={value}>
-                  {value} — {EFFECTIVENESS_LABELS[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="form__actions">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => {
-                setAdding(false);
-                setError(null);
-              }}
-            >
-              {strings.common.cancel}
-            </button>
-            <button type="submit">{strings.common.add}</button>
-          </div>
-        </form>
-      ) : (
-        <button type="button" className="icon-btn" onClick={() => setAdding(true)}>
-          + {strings.editor.addBarrier(barrierNounSingular)}
-        </button>
-      )}
+      {!readOnly &&
+        (adding ? (
+          <form className="form" onSubmit={submit}>
+            <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={strings.editor.barrierLabelPlaceholder(barrierNounSingular)} autoFocus />
+            {error && <p className="error-text">{error}</p>}
+            <div className="form__row">
+              <select value={barrierType} onChange={(e) => setBarrierType(e.target.value as BarrierType | '')}>
+                <option value="">{strings.editor.barrierTypePlaceholder}</option>
+                {BARRIER_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {BARRIER_TYPE_LABELS[type]}
+                  </option>
+                ))}
+              </select>
+              <select value={effectiveness} onChange={(e) => setEffectiveness(e.target.value)}>
+                <option value="">{EFFECTIVENESS_NOT_EVALUATED_LABEL}</option>
+                {EFFECTIVENESS_SCALE.map((value) => (
+                  <option key={value} value={value}>
+                    {value} — {EFFECTIVENESS_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form__actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setAdding(false);
+                  setError(null);
+                }}
+              >
+                {strings.common.cancel}
+              </button>
+              <button type="submit">{strings.common.add}</button>
+            </div>
+          </form>
+        ) : (
+          <button type="button" className="icon-btn" onClick={() => setAdding(true)}>
+            + {strings.editor.addBarrier(barrierNounSingular)}
+          </button>
+        ))}
     </div>
   );
 }
@@ -421,11 +445,12 @@ interface BarrierPanelProps<TBarrier extends BarrierEntity> {
   barrier: TBarrier;
   barrierRepo: Pick<BarrierRepo<TBarrier>, 'update' | 'remove'>;
   barrierNounSingular: string;
+  readOnly: boolean;
   onReload: () => Promise<void> | void;
   onClose: () => void;
 }
 
-function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, barrierRepo, barrierNounSingular, onReload, onClose }: BarrierPanelProps<TBarrier>) {
+function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, barrierRepo, barrierNounSingular, readOnly, onReload, onClose }: BarrierPanelProps<TBarrier>) {
   const [label, setLabel] = useState(barrier.label);
   const [barrierType, setBarrierType] = useState<BarrierType | ''>(barrier.barrier_type ?? '');
   const [effectiveness, setEffectiveness] = useState(barrier.effectiveness ? String(barrier.effectiveness) : '');
@@ -475,45 +500,47 @@ function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, b
         </button>
       </div>
 
-      <label className="field">
-        {strings.editor.barrierLabelPlaceholder(barrierNounSingular)}
-        <input value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
-      </label>
+      <fieldset className="form-fieldset" disabled={readOnly}>
+        <label className="field">
+          {strings.editor.barrierLabelPlaceholder(barrierNounSingular)}
+          <input value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
+        </label>
 
-      <label className="field">
-        {strings.editor.barrierTypePlaceholder}
-        <select value={barrierType} onChange={(e) => setBarrierType(e.target.value as BarrierType | '')}>
-          <option value="">{strings.editor.barrierTypePlaceholder}</option>
-          {BARRIER_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {BARRIER_TYPE_LABELS[type]}
-            </option>
-          ))}
-        </select>
-      </label>
+        <label className="field">
+          {strings.editor.barrierTypePlaceholder}
+          <select value={barrierType} onChange={(e) => setBarrierType(e.target.value as BarrierType | '')}>
+            <option value="">{strings.editor.barrierTypePlaceholder}</option>
+            {BARRIER_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {BARRIER_TYPE_LABELS[type]}
+              </option>
+            ))}
+          </select>
+        </label>
 
-      <label className="field">
-        {strings.editor.effectivenessLabel}
-        <select value={effectiveness} onChange={(e) => setEffectiveness(e.target.value)}>
-          <option value="">{EFFECTIVENESS_NOT_EVALUATED_LABEL}</option>
-          {EFFECTIVENESS_SCALE.map((value) => (
-            <option key={value} value={value}>
-              {value} — {EFFECTIVENESS_LABELS[value]}
-            </option>
-          ))}
-        </select>
-      </label>
+        <label className="field">
+          {strings.editor.effectivenessLabel}
+          <select value={effectiveness} onChange={(e) => setEffectiveness(e.target.value)}>
+            <option value="">{EFFECTIVENESS_NOT_EVALUATED_LABEL}</option>
+            {EFFECTIVENESS_SCALE.map((value) => (
+              <option key={value} value={value}>
+                {value} — {EFFECTIVENESS_LABELS[value]}
+              </option>
+            ))}
+          </select>
+        </label>
 
-      {error && <p className="error-text">{error}</p>}
+        {error && <p className="error-text">{error}</p>}
 
-      <div className="form__actions">
-        <button type="button" className="btn-danger" onClick={() => void handleDelete()}>
-          {strings.common.delete}
-        </button>
-        <button type="submit" disabled={saving}>
-          {strings.common.save}
-        </button>
-      </div>
+        <div className="form__actions">
+          <button type="button" className="btn-danger" onClick={() => void handleDelete()}>
+            {strings.common.delete}
+          </button>
+          <button type="submit" disabled={saving}>
+            {strings.common.save}
+          </button>
+        </div>
+      </fieldset>
     </form>
   );
 }

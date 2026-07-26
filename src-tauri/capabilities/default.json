@@ -10,7 +10,11 @@
     "sql:allow-execute",
     "fs:default",
     "fs:allow-exe-write-recursive",
+    "fs:allow-exe-read-recursive",
     "fs:allow-applocaldata-write-recursive",
-    "store:default"
+    "fs:allow-applocaldata-read-recursive",
+    "store:default",
+    "os:default",
+    "os:allow-hostname"
   ]
 }

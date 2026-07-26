@@ -19,3 +19,20 @@ export async function getBancosDir(): Promise<string> {
 export async function getBackupsDir(): Promise<string> {
   return join(await dataRoot(), 'backups');
 }
+
+// Cópia de trabalho (about.md, Seção 6.2/6.3): fica FORA de bancos/, em
+// AppData local não sincronizado — é nela que o SQLite realmente abre/edita.
+// Nomeada pelo id do projeto (estável mesmo se o projeto for renomeado).
+export async function getWorkingDbPath(projectId: string): Promise<string> {
+  const dir = await join(await appLocalDataDir(), 'working');
+  return join(dir, `${projectId}.db`);
+}
+
+export async function getWorkingDir(): Promise<string> {
+  return join(await appLocalDataDir(), 'working');
+}
+
+// Caminho do arquivo de lock do projeto: bancos/<slug>.db.lock.json.
+export async function getLockPath(dbFile: string): Promise<string> {
+  return join(await getBancosDir(), `${dbFile}.lock.json`);
+}

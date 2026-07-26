@@ -135,21 +135,23 @@ export function SessionsScreen() {
                       {strings.common.createdBy} {session.created_by}
                     </span>
                   </button>
-                  <div className="list-item__actions">
-                    <button
-                      className="icon-btn"
-                      onClick={() => {
-                        setRenamingId(session.id);
-                        setRenameValue(session.name);
-                        setRenameDescription(session.description ?? '');
-                      }}
-                    >
-                      {strings.common.rename}
-                    </button>
-                    <button className="icon-btn icon-btn--danger" onClick={() => void handleDelete(session)}>
-                      {strings.common.delete}
-                    </button>
-                  </div>
+                  {!project.readOnly && (
+                    <div className="list-item__actions">
+                      <button
+                        className="icon-btn"
+                        onClick={() => {
+                          setRenamingId(session.id);
+                          setRenameValue(session.name);
+                          setRenameDescription(session.description ?? '');
+                        }}
+                      >
+                        {strings.common.rename}
+                      </button>
+                      <button className="icon-btn icon-btn--danger" onClick={() => void handleDelete(session)}>
+                        {strings.common.delete}
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -157,24 +159,26 @@ export function SessionsScreen() {
         </div>
       )}
 
-      <div className="panel">
-        <p className="section-title">{strings.sessions.createTitle}</p>
-        <form className="form" onSubmit={handleCreate}>
-          <label className="field">
-            {strings.sessions.nameLabel}
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={strings.sessions.namePlaceholder} />
-          </label>
-          <label className="field">
-            {strings.sessions.descriptionLabel}
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={strings.sessions.descriptionPlaceholder} />
-          </label>
-          <div className="form__actions">
-            <button type="submit" disabled={saving}>
-              {strings.sessions.createSubmit}
-            </button>
-          </div>
-        </form>
-      </div>
+      {!project.readOnly && (
+        <div className="panel">
+          <p className="section-title">{strings.sessions.createTitle}</p>
+          <form className="form" onSubmit={handleCreate}>
+            <label className="field">
+              {strings.sessions.nameLabel}
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={strings.sessions.namePlaceholder} />
+            </label>
+            <label className="field">
+              {strings.sessions.descriptionLabel}
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={strings.sessions.descriptionPlaceholder} />
+            </label>
+            <div className="form__actions">
+              <button type="submit" disabled={saving}>
+                {strings.sessions.createSubmit}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

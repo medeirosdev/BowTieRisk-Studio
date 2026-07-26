@@ -40,6 +40,7 @@ interface CanvasEditorProps {
   dbPath: string;
   bowtieId: string;
   user: CurrentUser;
+  readOnly: boolean;
 }
 
 // A instância do React Flow só pode usar useReactFlow() dentro de um
@@ -52,7 +53,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
   );
 }
 
-function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
+function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorProps) {
   const [graph, setGraph] = useState<BowtieGraphData | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<BowtieNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
@@ -181,7 +182,7 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
   );
 
   const handleDeleteSelected = useCallback(async () => {
-    if (!selectedNode) return;
+    if (!selectedNode || readOnly) return;
     const data = selectedNode.data;
     if (data.kind === 'top-event') return;
 
@@ -200,7 +201,7 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
       console.error(err);
       setError(strings.common.saveError);
     }
-  }, [selectedNode, dbPath, user, load]);
+  }, [selectedNode, dbPath, user, load, readOnly]);
 
   // Atalhos: Esc fecha o painel lateral; Delete exclui o nó selecionado
   // (ignorado quando o foco está num campo de formulário).
@@ -264,6 +265,7 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
           onNodeClick={handleNodeClick}
           onPaneClick={handlePaneClick}
           onNodeDragStop={handleNodeDragStop}
+          nodesDraggable={!readOnly}
           colorMode="system"
           fitView
           minZoom={0.2}
@@ -275,24 +277,28 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
         </ReactFlow>
 
         <div className="canvas-toolbar">
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedNodeId(null);
-              setCreatingSide('threat');
-            }}
-          >
-            + {strings.editor.threatNoun}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedNodeId(null);
-              setCreatingSide('consequence');
-            }}
-          >
-            + {strings.editor.consequenceNoun}
-          </button>
+          {!readOnly && (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedNodeId(null);
+                  setCreatingSide('threat');
+                }}
+              >
+                + {strings.editor.threatNoun}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedNodeId(null);
+                  setCreatingSide('consequence');
+                }}
+              >
+                + {strings.editor.consequenceNoun}
+              </button>
+            </>
+          )}
           <button type="button" className="btn-secondary" onClick={() => void handleExportPng()}>
             {strings.editor.exportPng}
           </button>
@@ -301,7 +307,16 @@ function CanvasEditorInner({ dbPath, bowtieId, user }: CanvasEditorProps) {
         {error && <p className="error-text canvas-editor__error">{error}</p>}
       </div>
 
-      <SidePanel dbPath={dbPath} user={user} graph={graph} selectedNode={selectedNode} creatingSide={creatingSide} onClose={handleClosePanel} onReload={load} />
+      <SidePanel
+        dbPath={dbPath}
+        user={user}
+        graph={graph}
+        selectedNode={selectedNode}
+        creatingSide={readOnly ? null : creatingSide}
+        readOnly={readOnly}
+        onClose={handleClosePanel}
+        onReload={load}
+      />
     </div>
   );
 }
