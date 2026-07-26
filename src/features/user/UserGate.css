@@ -1,9 +1,25 @@
 .user-gate {
+  position: relative;
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Foto do Sirius (LNLS/CNPEM) desfocada ao fundo — elemento próprio (não a
+   raiz) pra aplicar blur sem borrar o card do formulário por cima. */
+.user-gate__wallpaper {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: linear-gradient(180deg, rgba(9, 14, 26, 0.55), rgba(9, 14, 26, 0.78)), url('../../assets/branding/cnpem-wallpaper.jpg');
+  background-size: cover;
+  background-position: center 60%;
+  filter: blur(14px);
+  transform: scale(1.1);
 }
 
 .user-gate__form {
@@ -13,11 +29,12 @@
   width: 100%;
   max-width: 360px;
   padding: var(--space-8);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  backdrop-filter: blur(6px);
   border: 1px solid var(--color-border);
   border-top: 3px solid var(--color-accent);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
 }
 
 .user-gate__brand {
@@ -75,4 +92,42 @@
 
 .user-gate__form button {
   margin-top: var(--space-2);
+}
+
+/* Faixa clara com as logos institucionais — o texto do logo do CNPEM usa
+   preto fixo (sem fill próprio no SVG), por isso precisa de um fundo claro
+   por baixo pra não sumir sobre a foto escura. Fixada perto do rodapé,
+   solta do card de login (não faz parte do fluxo/altura do formulário). */
+.user-gate__brands {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-12);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-8);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.user-gate__brands-divider {
+  width: 1px;
+  height: 44px;
+  background: rgba(15, 20, 30, 0.15);
+}
+
+.user-gate__brand-logo {
+  width: auto;
+  display: block;
+}
+
+.user-gate__brand-logo--cnpem {
+  height: 40px;
+}
+
+.user-gate__brand-logo--lnls {
+  height: 56px;
 }

@@ -1,17 +1,11 @@
-import { LazyStore } from '@tauri-apps/plugin-store';
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
+import cnpemLogo from '../../assets/branding/cnpem-logo.svg';
+import lnlsLogo from '../../assets/branding/lnls-logo.png';
 import { BowtieMark } from '../../components/BowtieMark';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
+import { loadSavedUser, saveSavedUser } from './userSettings';
 import './UserGate.css';
-
-const SETTINGS_FILE = 'settings.json';
-const CURRENT_USER_KEY = 'currentUser';
-
-interface SavedUser {
-  name: string;
-  email: string;
-}
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
@@ -31,8 +25,7 @@ export function UserGate({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     (async () => {
-      const store = new LazyStore(SETTINGS_FILE);
-      const saved = await store.get<SavedUser>(CURRENT_USER_KEY);
+      const saved = await loadSavedUser();
       if (saved && !cancelled) {
         setUser(saved);
       }
@@ -60,10 +53,7 @@ export function UserGate({ children }: { children: ReactNode }) {
 
     setError(null);
     try {
-      const store = new LazyStore(SETTINGS_FILE);
-      await store.set(CURRENT_USER_KEY, { name: trimmedName, email: trimmedEmail } satisfies SavedUser);
-      await store.save();
-
+      await saveSavedUser({ name: trimmedName, email: trimmedEmail });
       setUser({ name: trimmedName, email: trimmedEmail });
     } catch (err) {
       console.error(err);
@@ -76,6 +66,8 @@ export function UserGate({ children }: { children: ReactNode }) {
   if (!user) {
     return (
       <div className="user-gate">
+        <div className="user-gate__wallpaper" />
+
         <form className="user-gate__form" onSubmit={handleSubmit}>
           <div className="user-gate__brand">
             <BowtieMark />
@@ -109,6 +101,12 @@ export function UserGate({ children }: { children: ReactNode }) {
 
           <button type="submit">{strings.userGate.submit}</button>
         </form>
+
+        <div className="user-gate__brands">
+          <img src={cnpemLogo} alt="CNPEM" className="user-gate__brand-logo user-gate__brand-logo--cnpem" />
+          <span className="user-gate__brands-divider" aria-hidden="true" />
+          <img src={lnlsLogo} alt="LNLS" className="user-gate__brand-logo user-gate__brand-logo--lnls" />
+        </div>
       </div>
     );
   }

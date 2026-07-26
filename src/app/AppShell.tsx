@@ -1,8 +1,12 @@
 import { BowtieMark } from '../components/BowtieMark';
+import { closeProject } from '../db/repositories/projectRepo';
 import { BowtiesScreen } from '../features/bowties/BowtiesScreen';
 import { EditorScreen } from '../features/editor/EditorScreen';
 import { ProjectsScreen } from '../features/projects/ProjectsScreen';
 import { SessionsScreen } from '../features/sessions/SessionsScreen';
+import { StatusBar } from '../features/sync/StatusBar';
+import { useHeartbeat } from '../features/sync/useHeartbeat';
+import { clearSavedUser } from '../features/user/userSettings';
 import { strings } from '../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../store/currentUserStore';
 import { useNavStore } from '../store/navStore';
@@ -10,6 +14,7 @@ import { useOpenProjectStore } from '../store/openProjectStore';
 
 export function AppShell() {
   const user = useCurrentUserStore((s) => s.user);
+  const clearUser = useCurrentUserStore((s) => s.clearUser);
   const view = useNavStore((s) => s.view);
   const goToProjects = useNavStore((s) => s.goToProjects);
   const goToSessions = useNavStore((s) => s.goToSessions);
@@ -17,8 +22,39 @@ export function AppShell() {
   const project = useOpenProjectStore((s) => s.project);
   const setOpenProject = useOpenProjectStore((s) => s.setProject);
 
-  function handleGoToProjects() {
-    setOpenProject(null);
+  useHeartbeat(project);
+
+  // Fecha (sincroniza + libera o lock) o projeto atual, se houver. Retorna
+  // false se o sync falhar — quem chamou decide o que fazer (não navegar,
+  // avisar o usuário) em vez de perder silenciosamente edições não
+  // publicadas (о lock só é liberado se o sync deu certo, ver closeProject).
+  async function closeCurrentProject(): Promise<boolean> {
+    if (!project || !user) return true;
+    try {
+      await closeProject(project, user);
+      setOpenProject(null);
+      return true;
+    } catch (err) {
+      console.error(err);
+      window.alert(strings.sync.closeSyncError);
+      return false;
+    }
+  }
+
+  async function handleGoToProjects() {
+    if (await closeCurrentProject()) {
+      goToProjects();
+    }
+  }
+
+  async function handleLogout() {
+    if (!(await closeCurrentProject())) return;
+    try {
+      await clearSavedUser();
+    } catch (err) {
+      console.error(err);
+    }
+    clearUser();
     goToProjects();
   }
 
@@ -31,7 +67,7 @@ export function AppShell() {
         </div>
 
         <div className="shell__breadcrumb">
-          <button onClick={handleGoToProjects}>{strings.nav.projects}</button>
+          <button onClick={() => void handleGoToProjects()}>{strings.nav.projects}</button>
           {view.screen !== 'projects' && project && (
             <>
               <span>/</span>
@@ -55,11 +91,18 @@ export function AppShell() {
         </div>
 
         <div className="shell__user">
-          {user?.name}
-          <br />
-          {user?.email}
+          <div className="shell__user-info">
+            {user?.name}
+            <br />
+            {user?.email}
+          </div>
+          <button type="button" className="icon-btn" onClick={() => void handleLogout()}>
+            {strings.common.logout}
+          </button>
         </div>
       </header>
+
+      {view.screen !== 'projects' && project && user && <StatusBar project={project} user={user} onProjectUpdate={setOpenProject} />}
 
       <div className={`shell__content${view.screen === 'editor' ? ' shell__content--full' : ''}`}>
         {view.screen === 'projects' && <ProjectsScreen />}
