@@ -25,3 +25,10 @@ Pré-requisitos: Rust (via [rustup](https://rustup.rs/)) e as [dependências de 
 ```bash
 npm run tauri build
 ```
+
+## Autor
+
+**Guilherme de Medeiros**
+Software Engineer — Computational and Applied Mathematics @ UNICAMP — Research Collaborator at the Artificial Intelligence Lab., Recod.ai
+
+[LinkedIn](https://www.linkedin.com/in/guilhermedemedeiros/)
