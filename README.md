@@ -51,22 +51,88 @@ Ver [about.md](about.md) para a especificação completa do produto e o roadmap 
 | Canvas | [@xyflow/react](https://reactflow.dev/) (React Flow) |
 | Estado | Zustand |
 
-## Desenvolvimento
+## Instalação
+
+O projeto é um app Tauri: a interface roda em WebView (React + Vite), mas empacotada e distribuída como um executável nativo via Rust. Por isso, além do Node.js, é preciso ter o toolchain do Rust e as dependências de sistema do Tauri instaladas **antes** de rodar `npm install`.
+
+### Pré-requisitos comuns (todas as plataformas)
+
+| Ferramenta | Versão | Como instalar |
+| --- | --- | --- |
+| Node.js | 20.19+ ou 22.12+ | [nodejs.org](https://nodejs.org/) (LTS) |
+| Rust (toolchain estável) | mais recente | [rustup.rs](https://rustup.rs/) |
+
+Depois de instalar o Rust, confirme com:
+
+```bash
+rustc --version
+cargo --version
+```
+
+### Windows
+
+1. **Node.js**: baixe o instalador LTS em [nodejs.org](https://nodejs.org/) ou, via `winget`:
+   ```powershell
+   winget install OpenJS.NodeJS.LTS
+   ```
+2. **Rust**: baixe e rode o [`rustup-init.exe`](https://rustup.rs/) (ou `winget install Rustlang.Rustup`). Aceite o toolchain padrão — no Windows ele já vem configurado para o MSVC.
+3. **Microsoft C++ Build Tools**: o toolchain MSVC do Rust depende do compilador C++ da Microsoft. Instale o [Build Tools for Visual Studio](https://visualstudio.microsoft.com/visual-cpp-build-tools/) e, no instalador, marque a carga de trabalho **"Desenvolvimento para desktop com C++"**.
+4. **WebView2**: já vem pré-instalado no Windows 10 (a partir da versão 1803) e no Windows 11. Se faltar, baixe o [Evergreen Bootstrapper](https://developer.microsoft.com/microsoft-edge/webview2/) da Microsoft.
+5. Clone o repositório e siga em [Rodando em desenvolvimento](#rodando-em-desenvolvimento).
+
+### macOS
+
+1. **Ferramentas de linha de comando do Xcode** (compilador C/C++ exigido pelo Rust):
+   ```bash
+   xcode-select --install
+   ```
+2. **Node.js**: via [nodejs.org](https://nodejs.org/) ou Homebrew:
+   ```bash
+   brew install node
+   ```
+3. **Rust**:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+4. Clone o repositório e siga em [Rodando em desenvolvimento](#rodando-em-desenvolvimento).
+
+> O build gerado localmente não é assinado nem notarizado (sem certificado de desenvolvedor Apple). Ao abrir o `.app` pela primeira vez, o Gatekeeper vai reclamar — clique com o botão direito no app → **Abrir** para liberar a exceção.
+
+### Linux (Debian/Ubuntu)
+
+1. **Dependências de sistema** do WebKitGTK e do empacotamento:
+   ```bash
+   sudo apt update
+   sudo apt install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+     libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+   ```
+2. **Node.js**: via [nodejs.org](https://nodejs.org/), [nvm](https://github.com/nvm-sh/nvm) ou o gerenciador de pacotes da distro (se a versão empacotada atender ao mínimo acima).
+3. **Rust**:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+4. Clone o repositório e siga em [Rodando em desenvolvimento](#rodando-em-desenvolvimento).
+
+Em distribuições Fedora/openSUSE (`dnf`) ou Arch (`pacman`), os nomes dos pacotes mudam (ex.: `webkit2gtk4.1-devel` no Fedora). Veja a lista completa e atualizada por distro na [documentação oficial do Tauri](https://tauri.app/start/prerequisites/).
+
+> **Nota sobre empacotamento no Linux**: `.deb`/`.rpm` instalam o binário em `/usr/bin`, e o AppImage roda a partir de um ponto de montagem temporário — nenhum dos dois é adequado ao modelo do app, que espera as pastas `bancos/` e `backups/` ao lado do executável (pensado para ser copiado como uma pasta portátil, como no Windows). Para uso real no Linux, prefira copiar o binário puro (`src-tauri/target/release/bowtie-studio`) para uma pasta gravável e rodá-lo diretamente de lá.
+
+### Rodando em desenvolvimento
 
 ```bash
 npm install
 npm run tauri dev
 ```
 
-Pré-requisitos: Rust (via [rustup](https://rustup.rs/)) e as [dependências de sistema do Tauri](https://tauri.app/start/prerequisites/) para a sua plataforma.
+Abre o app com hot-reload da interface. Na primeira vez, o Cargo vai compilar todas as dependências Rust — pode levar alguns minutos.
 
-## Build
+### Gerando o executável (build)
 
 ```bash
 npm run tauri build
 ```
 
-Gera o executável e os instaladores para a plataforma em que o build é executado (Linux, Windows ou macOS) — não há cross-compilação automática entre plataformas.
+Gera o executável e os instaladores para a plataforma em que o build é executado — não há cross-compilação automática entre plataformas (build no Windows gera `.exe`/instalador Windows, build no Linux gera `.deb`/`.rpm`/`.AppImage`, build no macOS gera `.app`/`.dmg`). Os artefatos ficam em `src-tauri/target/release/bundle/`.
 
 ## Autor
 
