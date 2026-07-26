@@ -22,6 +22,8 @@ import { reorderMitigativeBarriersFull } from '../../../db/repositories/mitigati
 import { slugify } from '../../../db/slug';
 import { strings } from '../../../i18n/strings.pt-BR';
 import type { CurrentUser } from '../../../store/currentUserStore';
+import { useDialog } from '../../ui/DialogProvider';
+import { useThemeStore } from '../../../store/themeStore';
 import { deriveGraph } from './deriveGraph';
 import type { BowtieGraphData } from './deriveGraph';
 import { computeLayout } from './layout';
@@ -62,6 +64,8 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
   const [error, setError] = useState<string | null>(null);
   const { fitView } = useReactFlow();
   const previousNodeCount = useRef<number | null>(null);
+  const { confirm, isOpen: isDialogOpen } = useDialog();
+  const resolvedTheme = useThemeStore((s) => s.resolved);
 
   const load = useCallback(async () => {
     try {
@@ -187,7 +191,7 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
     if (data.kind === 'top-event') return;
 
     const label = data.kind === 'threat' ? data.threat.label : data.kind === 'consequence' ? data.consequence.label : data.barrier.label;
-    if (!window.confirm(strings.editor.confirmDeleteItem(label))) return;
+    if (!(await confirm(strings.editor.confirmDeleteItem(label)))) return;
 
     try {
       if (data.kind === 'threat') await threatRepo.remove(dbPath, data.threat, user);
@@ -201,11 +205,16 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
       console.error(err);
       setError(strings.common.saveError);
     }
-  }, [selectedNode, dbPath, user, load, readOnly]);
+  }, [selectedNode, dbPath, user, load, readOnly, confirm]);
 
   // Atalhos: Esc fecha o painel lateral; Delete exclui o nó selecionado
   // (ignorado quando o foco está num campo de formulário).
   useEffect(() => {
+    // Enquanto um diálogo de confirmação está aberto (ex.: Delete acionou a
+    // exclusão do nó selecionado), Esc/Delete não devem também fechar o
+    // painel ou disparar uma segunda exclusão por baixo do diálogo.
+    if (isDialogOpen) return;
+
     function handleKeyDown(event: KeyboardEvent) {
       const target = event.target;
       if (target instanceof HTMLElement && EDITABLE_TAGS.has(target.tagName)) return;
@@ -219,7 +228,7 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedNodeId, handleClosePanel, handleDeleteSelected]);
+  }, [selectedNodeId, handleClosePanel, handleDeleteSelected, isDialogOpen]);
 
   async function handleExportPng() {
     if (nodes.length === 0) return;
@@ -266,7 +275,7 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
           onPaneClick={handlePaneClick}
           onNodeDragStop={handleNodeDragStop}
           nodesDraggable={!readOnly}
-          colorMode="system"
+          colorMode={resolvedTheme}
           fitView
           minZoom={0.2}
           maxZoom={2}

@@ -3,6 +3,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { updateBowtie } from '../../../db/repositories/bowtieRepo';
 import { strings } from '../../../i18n/strings.pt-BR';
 import type { CurrentUser } from '../../../store/currentUserStore';
+import { useDialog } from '../../ui/DialogProvider';
 import type { Bowtie } from '../../../types/domain';
 import { BARRIER_TYPE_LABELS, BARRIER_TYPES, EFFECTIVENESS_LABELS, EFFECTIVENESS_NOT_EVALUATED_LABEL, EFFECTIVENESS_SCALE } from '../../../types/enums';
 import type { BarrierType, Effectiveness } from '../../../types/enums';
@@ -233,6 +234,7 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
   const [label, setLabel] = useState(item.label);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm } = useDialog();
 
   useEffect(() => setLabel(item.label), [item.id, item.label]);
 
@@ -253,7 +255,7 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
   }
 
   async function handleDelete() {
-    if (!window.confirm(strings.editor.confirmDeleteItem(item.label))) return;
+    if (!(await confirm(strings.editor.confirmDeleteItem(item.label)))) return;
     try {
       await itemRepo.remove(dbPath, item, user);
       onClose();
@@ -275,7 +277,7 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
   }
 
   async function handleRemoveBarrier(barrier: TBarrier) {
-    if (!window.confirm(strings.editor.confirmDeleteItem(barrier.label))) return;
+    if (!(await confirm(strings.editor.confirmDeleteItem(barrier.label)))) return;
     try {
       await barrierRepo.remove(dbPath, barrier, user);
       await onReload();
@@ -456,6 +458,7 @@ function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, b
   const [effectiveness, setEffectiveness] = useState(barrier.effectiveness ? String(barrier.effectiveness) : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm } = useDialog();
 
   useEffect(() => {
     setLabel(barrier.label);
@@ -480,7 +483,7 @@ function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, b
   }
 
   async function handleDelete() {
-    if (!window.confirm(strings.editor.confirmDeleteItem(barrier.label))) return;
+    if (!(await confirm(strings.editor.confirmDeleteItem(barrier.label)))) return;
     try {
       await barrierRepo.remove(dbPath, barrier, user);
       onClose();

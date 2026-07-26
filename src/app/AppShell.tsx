@@ -7,6 +7,8 @@ import { ProjectsScreen } from '../features/projects/ProjectsScreen';
 import { SessionsScreen } from '../features/sessions/SessionsScreen';
 import { StatusBar } from '../features/sync/StatusBar';
 import { useHeartbeat } from '../features/sync/useHeartbeat';
+import { ThemeToggle } from '../features/theme/ThemeToggle';
+import { useDialog } from '../features/ui/DialogProvider';
 import { clearSavedUser } from '../features/user/userSettings';
 import { strings } from '../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../store/currentUserStore';
@@ -23,6 +25,7 @@ export function AppShell() {
   const goToAudit = useNavStore((s) => s.goToAudit);
   const project = useOpenProjectStore((s) => s.project);
   const setOpenProject = useOpenProjectStore((s) => s.setProject);
+  const { alert } = useDialog();
 
   useHeartbeat(project);
 
@@ -38,7 +41,7 @@ export function AppShell() {
       return true;
     } catch (err) {
       console.error(err);
-      window.alert(strings.sync.closeSyncError);
+      await alert(strings.sync.closeSyncError);
       return false;
     }
   }
@@ -65,7 +68,10 @@ export function AppShell() {
       <header className="shell__header">
         <div className="shell__brand">
           <BowtieMark size={22} />
-          <h1>{strings.app.title}</h1>
+          <div className="shell__brand-text">
+            <h1>{strings.app.title}</h1>
+            <span className="shell__brand-sub">{strings.app.titleFull}</span>
+          </div>
         </div>
 
         <div className="shell__breadcrumb">
@@ -99,6 +105,7 @@ export function AppShell() {
         </div>
 
         <div className="shell__user">
+          <ThemeToggle />
           <div className="shell__user-info">
             {user?.name}
             <br />

@@ -45,9 +45,22 @@
   margin-bottom: var(--space-1);
 }
 
+.user-gate__brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
 .user-gate__brand h1 {
-  font-size: var(--text-lg);
+  font-size: var(--text-xl);
+  line-height: 1.2;
   color: var(--color-text);
+}
+
+.user-gate__brand-sub {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
 }
 
 .user-gate__subtitle {
@@ -117,6 +130,16 @@
   width: 1px;
   height: 44px;
   background: rgba(15, 20, 30, 0.15);
+}
+
+.user-gate__credit {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-4);
+  transform: translateX(-50%);
+  font-size: var(--text-xs);
+  color: rgba(255, 255, 255, 0.75);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .user-gate__brand-logo {

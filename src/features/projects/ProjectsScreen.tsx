@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { createProject, deleteProject, getProject, listProjects, openProject, renameProject, resolveProjectDbPath } from '../../db/repositories/projectRepo';
 import type { ProjectIndexEntry } from '../../db/indexFile';
+import { useDialog } from '../ui/DialogProvider';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
 import { useNavStore } from '../../store/navStore';
@@ -10,6 +11,7 @@ export function ProjectsScreen() {
   const user = useCurrentUserStore((s) => s.user);
   const setOpenProject = useOpenProjectStore((s) => s.setProject);
   const goToSessions = useNavStore((s) => s.goToSessions);
+  const { confirm } = useDialog();
 
   const [projects, setProjects] = useState<ProjectIndexEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export function ProjectsScreen() {
 
   async function handleDelete(entry: ProjectIndexEntry) {
     if (!user) return;
-    if (!window.confirm(strings.projects.confirmDelete(entry.name))) return;
+    if (!(await confirm(strings.projects.confirmDelete(entry.name)))) return;
     try {
       await deleteProject(entry, user);
       await refresh();

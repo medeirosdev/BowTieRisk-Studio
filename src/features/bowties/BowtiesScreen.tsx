@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { createBowtie, deleteBowtie, listBowties, updateBowtie } from '../../db/repositories/bowtieRepo';
+import { useDialog } from '../ui/DialogProvider';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
 import { useNavStore } from '../../store/navStore';
@@ -11,6 +12,7 @@ export function BowtiesScreen() {
   const project = useOpenProjectStore((s) => s.project);
   const view = useNavStore((s) => s.view);
   const goToEditor = useNavStore((s) => s.goToEditor);
+  const { confirm } = useDialog();
   const sessionId = view.screen === 'bowties' ? view.sessionId : null;
   const sessionName = view.screen === 'bowties' ? view.sessionName : '';
 
@@ -82,7 +84,7 @@ export function BowtiesScreen() {
   async function handleDelete(bowtie: Bowtie) {
     if (!user) return;
     if (!project) return;
-    if (!window.confirm(strings.bowties.confirmDelete(bowtie.name))) return;
+    if (!(await confirm(strings.bowties.confirmDelete(bowtie.name)))) return;
     try {
       await deleteBowtie(project.dbPath, bowtie, user);
       await refresh();

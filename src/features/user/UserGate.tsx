@@ -4,6 +4,7 @@ import lnlsLogo from '../../assets/branding/lnls-logo.png';
 import { BowtieMark } from '../../components/BowtieMark';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
+import { AuthorCredit } from '../about/AuthorCredit';
 import { loadSavedUser, saveSavedUser } from './userSettings';
 import './UserGate.css';
 
@@ -71,7 +72,10 @@ export function UserGate({ children }: { children: ReactNode }) {
         <form className="user-gate__form" onSubmit={handleSubmit}>
           <div className="user-gate__brand">
             <BowtieMark />
-            <h1>{strings.userGate.title}</h1>
+            <div className="user-gate__brand-text">
+              <h1>{strings.userGate.title}</h1>
+              <span className="user-gate__brand-sub">{strings.userGate.titleFull}</span>
+            </div>
           </div>
           <p className="user-gate__subtitle">{strings.userGate.subtitle}</p>
 
@@ -106,6 +110,10 @@ export function UserGate({ children }: { children: ReactNode }) {
           <img src={cnpemLogo} alt="CNPEM" className="user-gate__brand-logo user-gate__brand-logo--cnpem" />
           <span className="user-gate__brands-divider" aria-hidden="true" />
           <img src={lnlsLogo} alt="LNLS" className="user-gate__brand-logo user-gate__brand-logo--lnls" />
+        </div>
+
+        <div className="user-gate__credit">
+          <AuthorCredit />
         </div>
       </div>
     );

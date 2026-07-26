@@ -1,6 +1,8 @@
 <div align="center">
 
-# Bow Tie Risk Studio
+# BTR Studio
+
+### BowTieRisk Studio
 
 Aplicação desktop, local e offline-first, para construir e gerenciar análises de risco no formato **Bow Tie** (Gravata Borboleta): ameaças e barreiras preventivas à esquerda, evento de topo no centro, consequências e barreiras mitigatórias à direita.
 

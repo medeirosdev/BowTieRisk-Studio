@@ -2,7 +2,8 @@
 // Sem biblioteca de i18n por ora — só PT-BR — mas nada de string solta no JSX.
 export const strings = {
   userGate: {
-    title: 'Bow Tie Risk Studio',
+    title: 'BTR Studio',
+    titleFull: 'BowTieRisk Studio',
     subtitle: 'Identifique-se para continuar',
     nameLabel: 'Nome',
     namePlaceholder: 'Seu nome completo',
@@ -15,7 +16,21 @@ export const strings = {
     genericError: 'Não foi possível salvar seu usuário. Tente novamente.',
   },
   app: {
-    title: 'Bow Tie Risk Studio',
+    title: 'BTR Studio',
+    titleFull: 'BowTieRisk Studio',
+  },
+  theme: {
+    toggleLabel: 'Tema',
+    system: 'Sistema',
+    light: 'Claro',
+    dark: 'Escuro',
+  },
+  author: {
+    createdBy: 'Criado por',
+    name: 'Medeiros',
+    fullName: 'Guilherme de Medeiros',
+    role: 'Software Engineer — Computational and Applied Mathematics @ UNICAMP — Research Collaborator at the Artificial Intelligence Lab., Recod.ai',
+    linkedinLabel: 'LinkedIn',
   },
   nav: {
     projects: 'Projetos',
@@ -26,6 +41,7 @@ export const strings = {
     delete: 'Excluir',
     rename: 'Renomear',
     close: 'Fechar',
+    ok: 'Entendi',
     logout: 'Sair',
     back: 'Voltar',
     add: 'Adicionar',

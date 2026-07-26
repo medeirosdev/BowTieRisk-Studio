@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { createSession, deleteSession, listSessions, renameSession } from '../../db/repositories/sessionRepo';
+import { useDialog } from '../ui/DialogProvider';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
 import { useNavStore } from '../../store/navStore';
@@ -10,6 +11,7 @@ export function SessionsScreen() {
   const user = useCurrentUserStore((s) => s.user);
   const project = useOpenProjectStore((s) => s.project);
   const goToBowties = useNavStore((s) => s.goToBowties);
+  const { confirm } = useDialog();
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ export function SessionsScreen() {
 
   async function handleDelete(session: Session) {
     if (!user || !project) return;
-    if (!window.confirm(strings.sessions.confirmDelete(session.name))) return;
+    if (!(await confirm(strings.sessions.confirmDelete(session.name)))) return;
     try {
       await deleteSession(project.dbPath, session, user);
       await refresh();

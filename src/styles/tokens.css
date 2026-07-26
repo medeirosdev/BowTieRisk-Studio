@@ -58,8 +58,17 @@
   --color-focus-ring: #1f4e9c;
 }
 
+/*
+ * O app segue prefers-color-scheme por padrão, mas o usuário pode fixar um
+ * tema manualmente (themeStore.ts) — nesse caso um atributo data-theme é
+ * escrito no <html> e tem que vencer a preferência do SO nos dois sentidos.
+ * Por isso os valores do tema escuro existem duas vezes: uma vez atrás de
+ * prefers-color-scheme (para o instante antes do JS rodar e para quem nunca
+ * abriu o seletor de tema) e uma vez incondicional em [data-theme="dark"]
+ * (para forçar escuro mesmo com o SO em modo claro).
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --color-bg: #0f141e;
     --color-surface: #171f2c;
     --color-surface-muted: #1e2735;
@@ -83,4 +92,29 @@
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
   }
+}
+
+:root[data-theme='dark'] {
+  --color-bg: #0f141e;
+  --color-surface: #171f2c;
+  --color-surface-muted: #1e2735;
+  --color-border: #2a3345;
+  --color-text: #e6e9f0;
+  --color-text-muted: #8d96a8;
+
+  --color-accent: #5b8def;
+  --color-accent-hover: #7fa6f5;
+  --color-accent-contrast: #0f141e;
+  --color-accent-soft: #1c2d4d;
+
+  --color-danger: #e2694f;
+  --color-danger-soft: #3a2420;
+  --color-warning: #d9a441;
+  --color-warning-soft: #3a3018;
+  --color-success: #4cae79;
+  --color-success-soft: #1f3327;
+
+  --color-focus-ring: #7fa6f5;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
