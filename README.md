@@ -4,6 +4,15 @@ Aplicação desktop, local e offline-first, para construir e gerenciar análises
 
 Ver [about.md](about.md) para a especificação completa do produto e o roadmap por fases.
 
+## Funcionalidades
+
+- Hierarquia Projeto → Sessão → Bowtie, cada projeto salvo em um arquivo SQLite próprio.
+- Canvas visual do bowtie (React Flow): layout determinístico por colunas, nós customizados por tipo, reordenar barreiras arrastando, exportação em PNG.
+- Barreiras classificadas pela taxonomia CCPS/DNV-GL (Detectar-Decidir-Agir) e escala de efetividade numérica.
+- Auditoria completa: toda criação, edição e exclusão é registrada com autor e data; tela de Histórico com filtros por usuário, entidade, ação e período.
+- Sincronização segura para pastas compartilhadas (ex.: SharePoint/OneDrive): cópia de trabalho local, lock com heartbeat, backups automáticos rotacionados e checagem de integridade a cada sincronização.
+- Identificação por nome e email (atribuição, não autenticação) e textos de interface centralizados em português.
+
 ## Stack
 
 - [Tauri 2](https://tauri.app/) (Rust) + [React](https://react.dev/) + TypeScript + Vite
@@ -25,6 +34,8 @@ Pré-requisitos: Rust (via [rustup](https://rustup.rs/)) e as [dependências de 
 ```bash
 npm run tauri build
 ```
+
+Gera o executável e os instaladores para a plataforma em que o build é executado (Linux, Windows ou macOS) — não há cross-compilação automática entre plataformas.
 
 ## Autor
 
