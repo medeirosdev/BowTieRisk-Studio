@@ -9,13 +9,14 @@ interface StatusBarProps {
   user: CurrentUser;
   onProjectUpdate: (project: OpenProject) => void;
   onOpenAudit: () => void;
+  onOpenBarrierTypes: () => void;
 }
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function StatusBar({ project, user, onProjectUpdate, onOpenAudit }: StatusBarProps) {
+export function StatusBar({ project, user, onProjectUpdate, onOpenAudit, onOpenBarrierTypes }: StatusBarProps) {
   const [syncing, setSyncing] = useState(false);
   // Aviso único ao reivindicar um lock obsoleto de outra pessoa (about.md,
   // Seção 6.3) — inicializado só na primeira renderização deste projeto.
@@ -59,7 +60,11 @@ export function StatusBar({ project, user, onProjectUpdate, onOpenAudit }: Statu
 
       <span className="status-bar__meta">{project.lastSyncAt ? strings.sync.lastSync(formatTime(project.lastSyncAt)) : strings.sync.neverSynced}</span>
 
-      <button type="button" className="icon-btn status-bar__audit-link" onClick={onOpenAudit}>
+      <button type="button" className="icon-btn status-bar__audit-link" onClick={onOpenBarrierTypes}>
+        {strings.barrierTypes.title}
+      </button>
+
+      <button type="button" className="icon-btn" onClick={onOpenAudit}>
         {strings.audit.title}
       </button>
 

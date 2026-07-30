@@ -46,6 +46,26 @@ CREATE TABLE bowties (
   updated_at  TEXT
 );
 
+-- ============ TIPOS DE BARREIRA (personalizáveis por projeto) ============
+-- Taxonomia CCPS/DNV-GL (about.md, Seção 5.1) como conjunto inicial — cada
+-- projeto pode adicionar os seus. barrier_type nas tabelas de barreira é
+-- texto livre (o nome do tipo, não uma referência): simples de estender sem
+-- FK/remapeamento, ao custo de renomear um tipo aqui não atualizar barreiras
+-- que já usam o nome antigo.
+CREATE TABLE barrier_types (
+  id          TEXT PRIMARY KEY,
+  label       TEXT NOT NULL UNIQUE,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_by  TEXT NOT NULL, created_at TEXT NOT NULL
+);
+
+INSERT INTO barrier_types (id, label, order_index, created_by, created_at) VALUES
+  ('hardware_passivo', 'Hardware Passivo', 0, 'sistema', datetime('now')),
+  ('hardware_ativo', 'Hardware Ativo', 1, 'sistema', datetime('now')),
+  ('hardware_ativo_humano', 'Hardware Ativo + Humano', 2, 'sistema', datetime('now')),
+  ('humano_comportamental', 'Humano / Comportamental', 3, 'sistema', datetime('now')),
+  ('hardware_continuo', 'Hardware Contínuo', 4, 'sistema', datetime('now'));
+
 -- ============ LADO ESQUERDO ============
 CREATE TABLE threats (
   id          TEXT PRIMARY KEY,
@@ -62,9 +82,7 @@ CREATE TABLE preventive_barriers (
   threat_id     TEXT NOT NULL REFERENCES threats(id) ON DELETE CASCADE,
   label         TEXT NOT NULL,
   description   TEXT,
-  barrier_type  TEXT CHECK (barrier_type IN
-                  ('hardware_passivo','hardware_ativo','hardware_ativo_humano',
-                   'humano_comportamental','hardware_continuo')),
+  barrier_type  TEXT,             -- nome do tipo (ver barrier_types); texto livre
   -- Efetividade: escala numérica 1 (muito baixa) a 5 (muito alta); NULL = não avaliada.
   effectiveness INTEGER CHECK (effectiveness IS NULL OR effectiveness BETWEEN 1 AND 5),
   order_index   INTEGER NOT NULL DEFAULT 0,   -- ordem na cadeia ameaça→topo
@@ -88,9 +106,7 @@ CREATE TABLE mitigative_barriers (
   consequence_id TEXT NOT NULL REFERENCES consequences(id) ON DELETE CASCADE,
   label          TEXT NOT NULL,
   description    TEXT,
-  barrier_type   TEXT CHECK (barrier_type IN
-                   ('hardware_passivo','hardware_ativo','hardware_ativo_humano',
-                    'humano_comportamental','hardware_continuo')),
+  barrier_type   TEXT,            -- nome do tipo (ver barrier_types); texto livre
   effectiveness  INTEGER CHECK (effectiveness IS NULL OR effectiveness BETWEEN 1 AND 5),
   order_index    INTEGER NOT NULL DEFAULT 0,   -- ordem na cadeia topo→consequência
   created_by     TEXT NOT NULL, created_at TEXT NOT NULL,

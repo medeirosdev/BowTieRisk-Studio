@@ -1,4 +1,4 @@
-import type { BarrierType, Effectiveness } from './enums';
+import type { Effectiveness } from './enums';
 
 interface AuditFields {
   created_by: string;
@@ -50,7 +50,7 @@ export interface PreventiveBarrier extends AuditFields {
   threat_id: string;
   label: string;
   description: string | null;
-  barrier_type: BarrierType | null;
+  barrier_type: string | null;
   effectiveness: Effectiveness;
   order_index: number;
 }
@@ -60,7 +60,7 @@ export interface MitigativeBarrier extends AuditFields {
   consequence_id: string;
   label: string;
   description: string | null;
-  barrier_type: BarrierType | null;
+  barrier_type: string | null;
   effectiveness: Effectiveness;
   order_index: number;
 }

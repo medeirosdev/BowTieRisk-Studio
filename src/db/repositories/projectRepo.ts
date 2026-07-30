@@ -10,6 +10,7 @@ import schemaSql from '../../../src-tauri/migrations/001_initial.sql?raw';
 import type { CurrentUser } from '../../store/currentUserStore';
 import type { Project } from '../../types/domain';
 import { writeAudit } from '../audit';
+import { ensureBarrierTypesSchema } from './barrierTypeRepo';
 import { closeDbAt, getDbAt } from '../client';
 import { appendProjectIndexEntry, ProjectIndexEntry, readProjectIndex, removeProjectIndexEntry, updateProjectIndexEntry } from '../indexFile';
 import { newId } from '../ids';
@@ -185,6 +186,10 @@ export async function openProject(entry: ProjectIndexEntry, user: CurrentUser): 
 
   const workingPath = await refreshWorkingCopy(canonicalPath, entry.id);
   const db = await getDbAt(workingPath);
+  // Projetos criados antes da tela "Tipos de Barreira" não têm a tabela
+  // barrier_types nem o CHECK antigo removido — idempotente, seguro rodar em
+  // toda abertura (inclusive somente leitura: só afeta a cópia de trabalho local).
+  await ensureBarrierTypesSchema(db, user);
 
   if (canClaim) {
     await acquireLock(entry.db_file, user, machine);

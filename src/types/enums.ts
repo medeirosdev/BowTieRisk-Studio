@@ -2,22 +2,10 @@
 // SQLite não tem tipo ENUM nativo: cada campo restrito usa TEXT/INTEGER + CHECK
 // no schema (src-tauri/migrations) e o union type correspondente aqui.
 
-export const BARRIER_TYPES = [
-  'hardware_passivo',
-  'hardware_ativo',
-  'hardware_ativo_humano',
-  'humano_comportamental',
-  'hardware_continuo',
-] as const;
-export type BarrierType = typeof BARRIER_TYPES[number];
-
-export const BARRIER_TYPE_LABELS: Record<BarrierType, string> = {
-  hardware_passivo: 'Hardware Passivo',
-  hardware_ativo: 'Hardware Ativo',
-  hardware_ativo_humano: 'Hardware Ativo + Humano',
-  humano_comportamental: 'Humano / Comportamental',
-  hardware_continuo: 'Hardware Contínuo',
-};
+// barrier_type NÃO é mais um union type fixo: cada projeto tem sua própria
+// tabela barrier_types (db/repositories/barrierTypeRepo.ts), personalizável
+// pela tela "Tipos de Barreira" — semeada na criação com a taxonomia
+// CCPS/DNV-GL de 5 tipos (about.md, Seção 5.1). O campo é `string | null`.
 
 // Efetividade: escala numérica 1 (muito baixa) a 5 (muito alta).
 // `null` significa "não avaliada" (decisão registrada em about.md, Seção 14).

@@ -1,6 +1,7 @@
 import { BowtieMark } from '../components/BowtieMark';
 import { closeProject } from '../db/repositories/projectRepo';
 import { AuditScreen } from '../features/audit/AuditScreen';
+import { BarrierTypesScreen } from '../features/barrierTypes/BarrierTypesScreen';
 import { BowtiesScreen } from '../features/bowties/BowtiesScreen';
 import { EditorScreen } from '../features/editor/EditorScreen';
 import { ProjectsScreen } from '../features/projects/ProjectsScreen';
@@ -23,6 +24,7 @@ export function AppShell() {
   const goToSessions = useNavStore((s) => s.goToSessions);
   const goToBowties = useNavStore((s) => s.goToBowties);
   const goToAudit = useNavStore((s) => s.goToAudit);
+  const goToBarrierTypes = useNavStore((s) => s.goToBarrierTypes);
   const project = useOpenProjectStore((s) => s.project);
   const setOpenProject = useOpenProjectStore((s) => s.setProject);
   const { alert } = useDialog();
@@ -102,6 +104,12 @@ export function AppShell() {
               <span>{strings.audit.title}</span>
             </>
           )}
+          {view.screen === 'barrierTypes' && (
+            <>
+              <span>/</span>
+              <span>{strings.barrierTypes.title}</span>
+            </>
+          )}
         </div>
 
         <div className="shell__user">
@@ -118,7 +126,7 @@ export function AppShell() {
       </header>
 
       {view.screen !== 'projects' && project && user && (
-        <StatusBar project={project} user={user} onProjectUpdate={setOpenProject} onOpenAudit={goToAudit} />
+        <StatusBar project={project} user={user} onProjectUpdate={setOpenProject} onOpenAudit={goToAudit} onOpenBarrierTypes={goToBarrierTypes} />
       )}
 
       <div className={`shell__content${view.screen === 'editor' ? ' shell__content--full' : ''}`}>
@@ -127,6 +135,7 @@ export function AppShell() {
         {view.screen === 'bowties' && <BowtiesScreen />}
         {view.screen === 'editor' && <EditorScreen />}
         {view.screen === 'audit' && <AuditScreen />}
+        {view.screen === 'barrierTypes' && <BarrierTypesScreen />}
       </div>
     </div>
   );

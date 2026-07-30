@@ -139,8 +139,8 @@ Cada **projeto** é um arquivo `.db` próprio, contendo **exatamente uma linha**
 
 Como SQLite não tem tipo `ENUM` nativo, cada campo restrito usa `TEXT` + `CHECK`, e no frontend um union type TypeScript.
 
-**`barrier_type` — taxonomia canônica da metodologia Bow Tie (CCPS / DNV-GL, padrão do BowTieXP).**
-Classifica a barreira pelo princípio **Detectar–Decidir–Agir (DDA)**, ou seja, *como* a barreira funciona e de quem ela depende (hardware, pessoas, ou combinação). São **cinco tipos**:
+**`barrier_type` — personalizável por projeto, com a taxonomia canônica da metodologia Bow Tie (CCPS / DNV-GL, padrão do BowTieXP) como conjunto inicial.**
+Cada projeto tem sua própria tabela `barrier_types` (tela "Tipos de Barreira"), semeada na criação com os cinco tipos abaixo; o projeto pode adicionar outros. `barrier_type` nas tabelas de barreira guarda o **nome do tipo como texto livre** (não uma referência/FK) — simples de estender, ao custo de renomear um tipo em `barrier_types` não atualizar barreiras que já usam o nome antigo. Classificação pelo princípio **Detectar–Decidir–Agir (DDA)**, ou seja, *como* a barreira funciona e de quem ela depende (hardware, pessoas, ou combinação). Os cinco tipos padrão:
 
 | Valor (chave) | Rótulo PT-BR | O que é | Exemplos |
 |---|---|---|---|
@@ -153,25 +153,11 @@ Classifica a barreira pelo princípio **Detectar–Decidir–Agir (DDA)**, ou se
 > Ter **tipos diversos** de barreira num mesmo lado é bom: reduz falha em modo comum (não depender só de hardware ou só de comportamento). A UI pode até mostrar essa diversidade por bowtie.
 
 ```ts
+// src/db/repositories/barrierTypeRepo.ts — barrier_type é `string | null` (BarrierInput),
+// não um union type: a lista de tipos vem da tabela barrier_types de cada projeto,
+// carregada em runtime (listBarrierTypes) em vez de um enum fixo em enums.ts.
+
 // src/types/enums.ts
-export const BARRIER_TYPES = [
-  'hardware_passivo',
-  'hardware_ativo',
-  'hardware_ativo_humano',
-  'humano_comportamental',
-  'hardware_continuo',
-] as const;
-export type BarrierType = typeof BARRIER_TYPES[number];
-
-// Rótulos exibidos na UI (mantidos no arquivo central de strings PT-BR)
-export const BARRIER_TYPE_LABELS: Record<BarrierType, string> = {
-  hardware_passivo:       'Hardware Passivo',
-  hardware_ativo:         'Hardware Ativo',
-  hardware_ativo_humano:  'Hardware Ativo + Humano',
-  humano_comportamental:  'Humano / Comportamental',
-  hardware_continuo:      'Hardware Contínuo',
-};
-
 // Efetividade: escala numérica 1 (muito baixa) a 5 (muito alta). A metodologia
 // exige que a barreira seja "efetiva, independente e auditável"; esta escala
 // apoia essa avaliação. `null` = não avaliada.
@@ -240,6 +226,16 @@ CREATE TABLE bowties (
   updated_at  TEXT
 );
 
+-- ============ TIPOS DE BARREIRA (personalizáveis por projeto) ============
+CREATE TABLE barrier_types (
+  id          TEXT PRIMARY KEY,
+  label       TEXT NOT NULL UNIQUE,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_by  TEXT NOT NULL, created_at TEXT NOT NULL
+);
+-- Semeada na criação do projeto com os 5 tipos padrão (ids = as chaves da
+-- tabela acima: hardware_passivo, hardware_ativo, ...).
+
 -- ============ LADO ESQUERDO ============
 CREATE TABLE threats (
   id          TEXT PRIMARY KEY,
@@ -256,9 +252,7 @@ CREATE TABLE preventive_barriers (
   threat_id     TEXT NOT NULL REFERENCES threats(id) ON DELETE CASCADE,
   label         TEXT NOT NULL,
   description   TEXT,
-  barrier_type  TEXT CHECK (barrier_type IN
-                  ('hardware_passivo','hardware_ativo','hardware_ativo_humano',
-                   'humano_comportamental','hardware_continuo')),
+  barrier_type  TEXT,             -- nome do tipo (ver barrier_types); texto livre
   effectiveness INTEGER CHECK (effectiveness IS NULL OR effectiveness BETWEEN 1 AND 5),
   order_index   INTEGER NOT NULL DEFAULT 0,   -- ordem na cadeia ameaça→topo
   created_by    TEXT NOT NULL, created_at TEXT NOT NULL,
@@ -281,9 +275,7 @@ CREATE TABLE mitigative_barriers (
   consequence_id TEXT NOT NULL REFERENCES consequences(id) ON DELETE CASCADE,
   label          TEXT NOT NULL,
   description    TEXT,
-  barrier_type   TEXT CHECK (barrier_type IN
-                   ('hardware_passivo','hardware_ativo','hardware_ativo_humano',
-                    'humano_comportamental','hardware_continuo')),
+  barrier_type   TEXT,            -- nome do tipo (ver barrier_types); texto livre
   effectiveness  INTEGER CHECK (effectiveness IS NULL OR effectiveness BETWEEN 1 AND 5),
   order_index    INTEGER NOT NULL DEFAULT 0,   -- ordem na cadeia topo→consequência
   created_by     TEXT NOT NULL, created_at TEXT NOT NULL,
@@ -626,8 +618,8 @@ Não esquecer:
 - ✅ **Sem autenticação** por enquanto.
 - ✅ **Export só PNG** por enquanto.
 - ✅ **Sem i18n** (só PT-BR), mas textos centralizados.
-- ✅ **Sempre ENUM** (via `CHECK` + union types).
-- ✅ **`barrier_type` = taxonomia canônica CCPS (5 tipos, princípio Detectar–Decidir–Agir):** `hardware_passivo`, `hardware_ativo`, `hardware_ativo_humano`, `humano_comportamental`, `hardware_continuo` (ver 5.1).
+- ✅ **Sempre ENUM** (via `CHECK` + union types) — exceto `barrier_type` (ver abaixo).
+- ✅ **`barrier_type` = personalizável por projeto** (tabela `barrier_types`, texto livre, sem `CHECK`), semeado na criação com a taxonomia canônica CCPS (5 tipos, princípio Detectar–Decidir–Agir): `hardware_passivo`, `hardware_ativo`, `hardware_ativo_humano`, `humano_comportamental`, `hardware_continuo` (ver 5.1). Decisão revista — era ENUM fixo até a Fase 3.
 - ✅ **Nome do arquivo `.db` = slug do nome do projeto**, com deduplicação por sufixo `-2`, `-3`… (ver 6.6).
 
 - ✅ **`effectiveness` = escala numérica 1–5** (1 = muito baixa, 5 = muito alta), `NULL` = não avaliada. Substitui a proposta original de string (`alta|media|baixa|nao_avaliada`). Ver `src/types/enums.ts` (`EFFECTIVENESS_SCALE`, `EFFECTIVENESS_LABELS`).

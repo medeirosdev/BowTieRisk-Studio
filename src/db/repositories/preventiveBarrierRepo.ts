@@ -1,5 +1,5 @@
 import type { CurrentUser } from '../../store/currentUserStore';
-import type { BarrierType, Effectiveness } from '../../types/enums';
+import type { Effectiveness } from '../../types/enums';
 import type { PreventiveBarrier } from '../../types/domain';
 import { writeAudit } from '../audit';
 import { getDbAt } from '../client';
@@ -8,7 +8,7 @@ import { newId } from '../ids';
 export interface BarrierInput {
   label: string;
   description: string | null;
-  barrier_type: BarrierType | null;
+  barrier_type: string | null;
   effectiveness: Effectiveness;
 }
 

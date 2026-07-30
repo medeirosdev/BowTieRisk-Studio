@@ -15,6 +15,8 @@ import type { Edge, Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { toPng } from 'html-to-image';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { listBarrierTypes } from '../../../db/repositories/barrierTypeRepo';
+import type { BarrierTypeRow } from '../../../db/repositories/barrierTypeRepo';
 import { getBowtie } from '../../../db/repositories/bowtieRepo';
 import { listNodePositions, saveNodePosition } from '../../../db/repositories/nodePositionRepo';
 import { reorderPreventiveBarriersFull } from '../../../db/repositories/preventiveBarrierRepo';
@@ -57,6 +59,7 @@ export function CanvasEditor(props: CanvasEditorProps) {
 
 function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorProps) {
   const [graph, setGraph] = useState<BowtieGraphData | null>(null);
+  const [barrierTypes, setBarrierTypes] = useState<BarrierTypeRow[]>([]);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<BowtieNodeData>>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -69,12 +72,14 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
 
   const load = useCallback(async () => {
     try {
-      const [bowtie, threats, consequences, positions] = await Promise.all([
+      const [bowtie, threats, consequences, positions, types] = await Promise.all([
         getBowtie(dbPath, bowtieId),
         threatRepo.list(dbPath, bowtieId),
         consequenceRepo.list(dbPath, bowtieId),
         listNodePositions(dbPath, bowtieId),
+        listBarrierTypes(dbPath),
       ]);
+      setBarrierTypes(types);
 
       const preventiveBarriersByThreat = Object.fromEntries(
         await Promise.all(threats.map(async (t) => [t.id, await preventiveBarrierRepo.list(dbPath, t.id)] as const)),
@@ -320,6 +325,7 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
         dbPath={dbPath}
         user={user}
         graph={graph}
+        barrierTypes={barrierTypes}
         selectedNode={selectedNode}
         creatingSide={readOnly ? null : creatingSide}
         readOnly={readOnly}

@@ -5,8 +5,9 @@ import { strings } from '../../../i18n/strings.pt-BR';
 import type { CurrentUser } from '../../../store/currentUserStore';
 import { useDialog } from '../../ui/DialogProvider';
 import type { Bowtie } from '../../../types/domain';
-import { BARRIER_TYPE_LABELS, BARRIER_TYPES, EFFECTIVENESS_LABELS, EFFECTIVENESS_NOT_EVALUATED_LABEL, EFFECTIVENESS_SCALE } from '../../../types/enums';
-import type { BarrierType, Effectiveness } from '../../../types/enums';
+import type { BarrierTypeRow } from '../../../db/repositories/barrierTypeRepo';
+import { EFFECTIVENESS_LABELS, EFFECTIVENESS_NOT_EVALUATED_LABEL, EFFECTIVENESS_SCALE } from '../../../types/enums';
+import type { Effectiveness } from '../../../types/enums';
 import type { BarrierInput } from '../../../db/repositories/preventiveBarrierRepo';
 import type { BowtieGraphData } from './deriveGraph';
 import { consequenceRepo, mitigativeBarrierRepo, preventiveBarrierRepo, threatRepo } from './repoAdapters';
@@ -17,7 +18,7 @@ type BarrierEntity = {
   id: string;
   label: string;
   description: string | null;
-  barrier_type: BarrierType | null;
+  barrier_type: string | null;
   effectiveness: Effectiveness;
   order_index: number;
 };
@@ -38,6 +39,7 @@ interface SidePanelProps {
   dbPath: string;
   user: CurrentUser;
   graph: BowtieGraphData;
+  barrierTypes: BarrierTypeRow[];
   selectedNode: Node<BowtieNodeData> | null;
   creatingSide: 'threat' | 'consequence' | null;
   readOnly: boolean;
@@ -45,7 +47,7 @@ interface SidePanelProps {
   onReload: () => Promise<void> | void;
 }
 
-export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, readOnly, onClose, onReload }: SidePanelProps) {
+export function SidePanel({ dbPath, user, graph, barrierTypes, selectedNode, creatingSide, readOnly, onClose, onReload }: SidePanelProps) {
   if (creatingSide) {
     return (
       <aside className="side-panel">
@@ -76,6 +78,7 @@ export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, rea
           user={user}
           item={selectedNode.data.threat}
           barriers={graph.preventiveBarriersByThreat[selectedNode.data.threat.id] ?? []}
+          barrierTypes={barrierTypes}
           itemRepo={threatRepo}
           barrierRepo={preventiveBarrierRepo}
           itemNounSingular={strings.editor.threatNoun}
@@ -93,6 +96,7 @@ export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, rea
           user={user}
           item={selectedNode.data.consequence}
           barriers={graph.mitigativeBarriersByConsequence[selectedNode.data.consequence.id] ?? []}
+          barrierTypes={barrierTypes}
           itemRepo={consequenceRepo}
           barrierRepo={mitigativeBarrierRepo}
           itemNounSingular={strings.editor.consequenceNoun}
@@ -109,6 +113,7 @@ export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, rea
           dbPath={dbPath}
           user={user}
           barrier={selectedNode.data.barrier}
+          barrierTypes={barrierTypes}
           barrierRepo={preventiveBarrierRepo}
           barrierNounSingular={strings.editor.preventiveBarrierNoun}
           readOnly={readOnly}
@@ -123,6 +128,7 @@ export function SidePanel({ dbPath, user, graph, selectedNode, creatingSide, rea
           dbPath={dbPath}
           user={user}
           barrier={selectedNode.data.barrier}
+          barrierTypes={barrierTypes}
           barrierRepo={mitigativeBarrierRepo}
           barrierNounSingular={strings.editor.mitigativeBarrierNoun}
           readOnly={readOnly}
@@ -209,6 +215,7 @@ interface LaneItemPanelProps<TItem extends OrderedEntity, TBarrier extends Barri
   user: CurrentUser;
   item: TItem;
   barriers: TBarrier[];
+  barrierTypes: BarrierTypeRow[];
   itemRepo: ItemRepo<TItem>;
   barrierRepo: BarrierRepo<TBarrier>;
   itemNounSingular: string;
@@ -223,6 +230,7 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
   user,
   item,
   barriers,
+  barrierTypes,
   itemRepo,
   barrierRepo,
   itemNounSingular,
@@ -325,6 +333,7 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
       <div className="side-panel__section-title">{barrierNounSingular}</div>
       <BarrierManager
         barriers={barriers}
+        barrierTypes={barrierTypes}
         barrierNounSingular={barrierNounSingular}
         readOnly={readOnly}
         onAdd={handleAddBarrier}
@@ -338,6 +347,7 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
 // ============ Gerenciador de barreiras (lista + form de adicionar) ============
 interface BarrierManagerProps<TBarrier extends BarrierEntity> {
   barriers: TBarrier[];
+  barrierTypes: BarrierTypeRow[];
   barrierNounSingular: string;
   readOnly: boolean;
   onAdd: (input: BarrierInput) => void;
@@ -345,10 +355,10 @@ interface BarrierManagerProps<TBarrier extends BarrierEntity> {
   onReorder: (id: string, direction: 'up' | 'down') => void;
 }
 
-function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierNounSingular, readOnly, onAdd, onRemove, onReorder }: BarrierManagerProps<TBarrier>) {
+function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierTypes, barrierNounSingular, readOnly, onAdd, onRemove, onReorder }: BarrierManagerProps<TBarrier>) {
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState('');
-  const [barrierType, setBarrierType] = useState<BarrierType | ''>('');
+  const [barrierType, setBarrierType] = useState('');
   const [effectiveness, setEffectiveness] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -388,7 +398,7 @@ function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierNounS
             )}
           </div>
           <div className="barrier-item__badges">
-            <span className="badge badge--neutral">{barrier.barrier_type ? BARRIER_TYPE_LABELS[barrier.barrier_type] : strings.editor.noBarrierType}</span>
+            <span className="badge badge--neutral">{barrier.barrier_type ?? strings.editor.noBarrierType}</span>
             <span className="badge badge--neutral">{barrier.effectiveness ? EFFECTIVENESS_LABELS[barrier.effectiveness] : EFFECTIVENESS_NOT_EVALUATED_LABEL}</span>
           </div>
         </div>
@@ -400,11 +410,11 @@ function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierNounS
             <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={strings.editor.barrierLabelPlaceholder(barrierNounSingular)} autoFocus />
             {error && <p className="error-text">{error}</p>}
             <div className="form__row">
-              <select value={barrierType} onChange={(e) => setBarrierType(e.target.value as BarrierType | '')}>
+              <select value={barrierType} onChange={(e) => setBarrierType(e.target.value)}>
                 <option value="">{strings.editor.barrierTypePlaceholder}</option>
-                {BARRIER_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {BARRIER_TYPE_LABELS[type]}
+                {barrierTypes.map((type) => (
+                  <option key={type.id} value={type.label}>
+                    {type.label}
                   </option>
                 ))}
               </select>
@@ -445,6 +455,7 @@ interface BarrierPanelProps<TBarrier extends BarrierEntity> {
   dbPath: string;
   user: CurrentUser;
   barrier: TBarrier;
+  barrierTypes: BarrierTypeRow[];
   barrierRepo: Pick<BarrierRepo<TBarrier>, 'update' | 'remove'>;
   barrierNounSingular: string;
   readOnly: boolean;
@@ -452,9 +463,10 @@ interface BarrierPanelProps<TBarrier extends BarrierEntity> {
   onClose: () => void;
 }
 
-function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, barrierRepo, barrierNounSingular, readOnly, onReload, onClose }: BarrierPanelProps<TBarrier>) {
+function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, barrierTypes, barrierRepo, barrierNounSingular, readOnly, onReload, onClose }: BarrierPanelProps<TBarrier>) {
   const [label, setLabel] = useState(barrier.label);
-  const [barrierType, setBarrierType] = useState<BarrierType | ''>(barrier.barrier_type ?? '');
+  const [description, setDescription] = useState(barrier.description ?? '');
+  const [barrierType, setBarrierType] = useState(barrier.barrier_type ?? '');
   const [effectiveness, setEffectiveness] = useState(barrier.effectiveness ? String(barrier.effectiveness) : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -462,9 +474,10 @@ function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, b
 
   useEffect(() => {
     setLabel(barrier.label);
+    setDescription(barrier.description ?? '');
     setBarrierType(barrier.barrier_type ?? '');
     setEffectiveness(barrier.effectiveness ? String(barrier.effectiveness) : '');
-  }, [barrier.id, barrier.label, barrier.barrier_type, barrier.effectiveness]);
+  }, [barrier.id, barrier.label, barrier.description, barrier.barrier_type, barrier.effectiveness]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -472,7 +485,7 @@ function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, b
     if (!trimmed || saving) return;
     setSaving(true);
     try {
-      await barrierRepo.update(dbPath, barrier, { label: trimmed, description: barrier.description, barrier_type: barrierType || null, effectiveness: effectiveness ? (Number(effectiveness) as Effectiveness) : null }, user);
+      await barrierRepo.update(dbPath, barrier, { label: trimmed, description: description.trim() || null, barrier_type: barrierType || null, effectiveness: effectiveness ? (Number(effectiveness) as Effectiveness) : null }, user);
       await onReload();
     } catch (err) {
       console.error(err);
@@ -510,12 +523,20 @@ function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, b
         </label>
 
         <label className="field">
+          {strings.editor.descriptionLabel}
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={strings.editor.descriptionPlaceholder} />
+        </label>
+
+        <label className="field">
           {strings.editor.barrierTypePlaceholder}
-          <select value={barrierType} onChange={(e) => setBarrierType(e.target.value as BarrierType | '')}>
+          <select value={barrierType} onChange={(e) => setBarrierType(e.target.value)}>
             <option value="">{strings.editor.barrierTypePlaceholder}</option>
-            {BARRIER_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {BARRIER_TYPE_LABELS[type]}
+            {barrierType && !barrierTypes.some((t) => t.label === barrierType) && (
+              <option value={barrierType}>{barrierType}</option>
+            )}
+            {barrierTypes.map((type) => (
+              <option key={type.id} value={type.label}>
+                {type.label}
               </option>
             ))}
           </select>
