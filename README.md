@@ -35,11 +35,12 @@ Ver [about.md](about.md) para a especificação completa do produto e o roadmap 
 ## Funcionalidades
 
 - Hierarquia Projeto → Sessão → Bowtie, cada projeto salvo em um arquivo SQLite próprio.
-- Canvas visual do bowtie (React Flow): layout determinístico por colunas, nós customizados por tipo, reordenar barreiras arrastando, exportação em PNG.
-- Barreiras classificadas pela taxonomia CCPS/DNV-GL (Detectar-Decidir-Agir) e escala de efetividade numérica.
+- Canvas visual do bowtie (React Flow): layout determinístico por colunas, nós customizados por tipo, reordenar barreiras arrastando.
+- Exportação do bowtie em PNG, relatório em Markdown ou impressão/"Salvar como PDF" pelo diálogo nativo do sistema.
+- Barreiras com nome, descrição livre, tipo e efetividade — o tipo é personalizável por projeto (taxonomia CCPS/DNV-GL de 5 tipos como ponto de partida, editável numa tela própria), e a efetividade usa uma escala numérica de 1 a 5.
 - Auditoria completa: toda criação, edição e exclusão é registrada com autor e data; tela de Histórico com filtros por usuário, entidade, ação e período, resumo por ação/usuário/dia e exportação em CSV.
 - Sincronização segura para pastas compartilhadas (ex.: SharePoint/OneDrive): cópia de trabalho local, lock com heartbeat, backups automáticos rotacionados e checagem de integridade a cada sincronização.
-- Identificação por nome e email (atribuição, não autenticação) e textos de interface centralizados em português.
+- Identificação por nome e email (atribuição, não autenticação), tema claro/escuro/sistema e textos de interface centralizados em português.
 
 ## Stack
 
