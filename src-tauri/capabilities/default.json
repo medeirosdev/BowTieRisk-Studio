@@ -11,6 +11,7 @@
     "fs:default",
     "fs:allow-applocaldata-write-recursive",
     "fs:allow-applocaldata-read-recursive",
+    "dialog:default",
     "store:default",
     "os:default",
     "os:allow-hostname"

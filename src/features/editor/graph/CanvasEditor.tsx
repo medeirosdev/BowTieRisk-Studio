@@ -13,6 +13,8 @@ import {
 } from '@xyflow/react';
 import type { Edge, Node } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { toPng } from 'html-to-image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { listBarrierTypes } from '../../../db/repositories/barrierTypeRepo';
@@ -31,6 +33,8 @@ import type { BowtieGraphData } from './deriveGraph';
 import { computeLayout } from './layout';
 import { minimapNodeColor } from './nodeColors';
 import { nodeTypes } from './nodeTypes';
+import { bowtieToMarkdown } from './exportMarkdown';
+import { PrintReport } from './PrintReport';
 import { consequenceRepo, mitigativeBarrierRepo, preventiveBarrierRepo, threatRepo } from './repoAdapters';
 import { SidePanel } from './SidePanel';
 import type { BowtieNodeData } from './types';
@@ -39,6 +43,16 @@ import './canvas.css';
 const EXPORT_WIDTH = 1600;
 const EXPORT_HEIGHT = 1000;
 const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
+
+// toPng() devolve um data URL ("data:image/png;base64,...."); writeFile()
+// do plugin fs precisa dos bytes crus.
+function dataUrlToBytes(dataUrl: string): Uint8Array {
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1);
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 interface CanvasEditorProps {
   dbPath: string;
@@ -253,10 +267,35 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
           transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
         },
       });
-      const link = document.createElement('a');
-      link.download = `${slugify(graph?.bowtie.name ?? 'bowtie') || 'bowtie'}.png`;
-      link.href = dataUrl;
-      link.click();
+
+      // Não usar <a download> aqui: dentro do WebView do Tauri (WebKitGTK,
+      // WebView2) o clique num link de download não é confiável — sem um
+      // manipulador nativo de download, o navegador embutido simplesmente
+      // descarta o pedido, sem erro nenhum. O diálogo "Salvar como" nativo
+      // do Tauri + escrita de arquivo é o caminho garantido.
+      const path = await save({
+        defaultPath: `${slugify(graph?.bowtie.name ?? 'bowtie') || 'bowtie'}.png`,
+        filters: [{ name: 'PNG', extensions: ['png'] }],
+      });
+      if (!path) return; // usuário cancelou o diálogo
+
+      await writeFile(path, dataUrlToBytes(dataUrl));
+    } catch (err) {
+      console.error(err);
+      setError(strings.editor.exportError);
+    }
+  }
+
+  async function handleExportMarkdown() {
+    if (!graph) return;
+    try {
+      const path = await save({
+        defaultPath: `${slugify(graph.bowtie.name) || 'bowtie'}.md`,
+        filters: [{ name: 'Markdown', extensions: ['md'] }],
+      });
+      if (!path) return; // usuário cancelou o diálogo
+
+      await writeTextFile(path, bowtieToMarkdown(graph));
     } catch (err) {
       console.error(err);
       setError(strings.editor.exportError);
@@ -316,6 +355,12 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
           <button type="button" className="btn-secondary" onClick={() => void handleExportPng()}>
             {strings.editor.exportPng}
           </button>
+          <button type="button" className="btn-secondary" onClick={() => void handleExportMarkdown()}>
+            {strings.editor.exportMarkdown}
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => window.print()}>
+            {strings.editor.print}
+          </button>
         </div>
 
         {error && <p className="error-text canvas-editor__error">{error}</p>}
@@ -332,6 +377,8 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
         onClose={handleClosePanel}
         onReload={load}
       />
+
+      <PrintReport graph={graph} />
     </div>
   );
 }

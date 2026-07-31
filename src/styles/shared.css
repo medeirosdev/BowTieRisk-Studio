@@ -114,6 +114,25 @@
   overflow: hidden;
 }
 
+/* Relatório imprimível do bowtie (PrintReport.tsx) fica sempre no DOM,
+   escondido — só visível ao imprimir. .shell tem altura fixa (100vh) e
+   overflow escondido pra UI normal, o que cortaria o relatório se ele for
+   mais alto que uma tela; solto tudo aqui pro conteúdo fluir em várias
+   páginas impressas. */
+@media print {
+  .shell,
+  .shell__content,
+  .shell__content--full {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .shell__header,
+  .status-bar {
+    display: none !important;
+  }
+}
+
 .screen {
   width: 100%;
   max-width: 640px;

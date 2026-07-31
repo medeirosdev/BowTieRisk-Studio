@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { AuditFilters, AuditLogRow, MAX_ROWS, listAuditEntityTypes, listAuditLog, listAuditLogForExport, listAuditUsers } from '../../db/repositories/auditRepo';
 import { auditLogToCsv } from './csv';
 import { slugify } from '../../db/slug';
@@ -137,15 +139,20 @@ export function AuditScreen() {
     try {
       const exportRows = await listAuditLogForExport(project.dbPath, buildFilters());
       const csv = auditLogToCsv(exportRows);
+
+      // Não usar <a download> aqui: dentro do WebView do Tauri o clique num
+      // link de download não é confiável (sem manipulador nativo, é
+      // descartado silenciosamente). Diálogo "Salvar como" nativo + escrita
+      // de arquivo é o caminho garantido.
+      const path = await save({
+        defaultPath: `auditoria-${slugify(project.name) || 'projeto'}.csv`,
+        filters: [{ name: 'CSV', extensions: ['csv'] }],
+      });
+      if (!path) return; // usuário cancelou o diálogo
+
       // BOM: sem ele, o Excel no Windows abre CSV UTF-8 assumindo a
       // codepage do sistema e corrompe acentos (nomes/descrições em PT-BR).
-      const blob = new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `auditoria-${slugify(project.name) || 'projeto'}.csv`;
-      link.click();
-      URL.revokeObjectURL(url);
+      await writeTextFile(path, '﻿' + csv);
     } catch (err) {
       console.error(err);
       setError(strings.audit.exportError);

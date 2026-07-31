@@ -119,6 +119,8 @@ export const strings = {
     descriptionLabel: 'Descrição',
     descriptionPlaceholder: 'Detalhes adicionais (opcional)',
     exportPng: 'Exportar PNG',
+    exportMarkdown: 'Exportar Markdown',
+    print: 'Imprimir',
     exportError: 'Não foi possível exportar a imagem.',
   },
   sync: {

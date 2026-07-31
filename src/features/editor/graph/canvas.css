@@ -122,3 +122,57 @@
 .flow-node--mitigation {
   border-color: var(--color-warning-soft);
 }
+
+/* Relatório imprimível (PrintReport.tsx) — fora da tela normalmente, só
+   aparece em @media print, trocando de lugar com o canvas/painel lateral. */
+.print-report {
+  display: none;
+}
+
+@media print {
+  .canvas-editor {
+    display: block;
+  }
+
+  .canvas-editor__flow,
+  .side-panel {
+    display: none !important;
+  }
+
+  .print-report {
+    display: block;
+    color: #000;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .print-report h1 {
+    font-size: 1.5rem;
+  }
+
+  .print-report h2 {
+    margin-top: 2rem;
+    border-bottom: 1px solid #999;
+  }
+
+  .print-report ol {
+    padding-left: 1.25rem;
+  }
+
+  .print-report li {
+    margin-bottom: 0.75rem;
+  }
+
+  /* Descrições vêm de <textarea> (multi-linha) — <p> por padrão colapsa
+     quebras de linha; sem isso, texto digitado em várias linhas aparece
+     espremido numa linha só no relatório impresso. */
+  .print-report p {
+    white-space: pre-line;
+  }
+
+  .print-report section,
+  .print-report li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
