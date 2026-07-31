@@ -48,11 +48,11 @@ export async function ensureBarrierTypesSchema(db: Database, user: CurrentUser):
     }
   }
 
-  await dropBarrierTypeCheck(db, 'preventive_barriers', 'threat_id', 'threats');
-  await dropBarrierTypeCheck(db, 'mitigative_barriers', 'consequence_id', 'consequences');
+  await dropBarrierTypeCheck(db, user, 'preventive_barriers', 'threat_id', 'threats');
+  await dropBarrierTypeCheck(db, user, 'mitigative_barriers', 'consequence_id', 'consequences');
 }
 
-async function dropBarrierTypeCheck(db: Database, table: string, parentColumn: string, parentTable: string): Promise<void> {
+async function dropBarrierTypeCheck(db: Database, user: CurrentUser, table: string, parentColumn: string, parentTable: string): Promise<void> {
   const rows = await db.select<{ sql: string }[]>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = $1", [table]);
   const currentSql = rows[0]?.sql ?? '';
   if (!currentSql.includes('CHECK (barrier_type IN')) return; // já migrado
@@ -89,6 +89,16 @@ async function dropBarrierTypeCheck(db: Database, table: string, parentColumn: s
     COMMIT;
     PRAGMA foreign_keys = ON;
   `);
+
+  // Chamada separada (fora do batch acima): a transação da migração já
+  // commitou, então não há mais necessidade de garantir a mesma conexão —
+  // só registrar, como toda mutação (about.md, Seção 9). Roda uma vez por
+  // tabela migrada, não a cada abertura de projeto já migrado.
+  await writeAudit(db, user, {
+    action: 'UPDATE',
+    entityType: table === 'preventive_barriers' ? 'preventive_barrier' : 'mitigative_barrier',
+    entityLabel: 'migração: tipos de barreira personalizáveis',
+  });
 }
 
 export async function listBarrierTypes(dbPath: string): Promise<BarrierTypeRow[]> {
@@ -107,13 +117,14 @@ export async function createBarrierType(dbPath: string, label: string, user: Cur
     'INSERT INTO barrier_types (id, label, order_index, created_by, created_at) VALUES ($1, $2, $3, $4, $5)',
     [id, label, orderIndex, user.name, now],
   );
-  await writeAudit(db, user, { action: 'CREATE', entityType: 'barrier_type', entityId: id, entityLabel: label });
+  const created: BarrierTypeRow = { id, label, order_index: orderIndex };
+  await writeAudit(db, user, { action: 'CREATE', entityType: 'barrier_type', entityId: id, entityLabel: label, after: created });
 
-  return { id, label, order_index: orderIndex };
+  return created;
 }
 
 export async function deleteBarrierType(dbPath: string, type: BarrierTypeRow, user: CurrentUser): Promise<void> {
   const db = await getDbAt(dbPath);
   await db.execute('DELETE FROM barrier_types WHERE id = $1', [type.id]);
-  await writeAudit(db, user, { action: 'DELETE', entityType: 'barrier_type', entityId: type.id, entityLabel: type.label });
+  await writeAudit(db, user, { action: 'DELETE', entityType: 'barrier_type', entityId: type.id, entityLabel: type.label, before: type });
 }
