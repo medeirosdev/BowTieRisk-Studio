@@ -1,0 +1,65 @@
+name: Release
+
+# Builda o app em Windows e Linux e publica os instaladores como uma Release
+# do GitHub. Dispara ao empurrar uma tag "v*" (ex.: v0.1.1), ou manualmente
+# pela aba Actions informando a tag.
+#
+# Antes de criar a tag, atualize "version" em src-tauri/tauri.conf.json pra
+# bater com ela — é esse valor que aparece no instalador gerado.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag da release (ex.: v0.1.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache do Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Dependências de sistema (Linux)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Instalar dependências do frontend
+        run: npm ci
+
+      - name: Build e publicar release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: "BTR Studio ${{ github.event.inputs.tag || github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
