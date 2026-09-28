@@ -1,12 +1,19 @@
 import { EFFECTIVENESS_LABELS, EFFECTIVENESS_NOT_EVALUATED_LABEL } from '../../../types/enums';
 import type { MitigativeBarrier, PreventiveBarrier } from '../../../types/domain';
+import { findCategory } from './deriveGraph';
 import type { BowtieGraphData } from './deriveGraph';
 
 // Nome/descrição são texto livre digitado pelo usuário — rótulos técnicos
 // com "_" (ex.: "válvula_XV-101") ou um "*"/"`" digitado por acaso vira
-// formatação markdown não intencional (itálico, código) se não escapar.
+// formatação markdown não intencional (itálico, código, link, HTML, tabela)
+// se não escapar. No começo de cada linha, "#", ">", "-", "+" e "1." viram
+// título/citação/lista — também escapados.
 function escapeMd(text: string): string {
-  return text.replace(/[*_`]/g, '\\$&');
+  return text
+    .replace(/[\\`*_[\]<>|]/g, '\\$&')
+    .split('\n')
+    .map((line) => line.replace(/^(\s*)([#>+-])/, '$1\\$2').replace(/^(\s*\d+)([.)])/, '$1\\$2'))
+    .join('\n');
 }
 
 function barrierLine(index: number, barrier: PreventiveBarrier | MitigativeBarrier): string {
@@ -49,6 +56,8 @@ export function bowtieToMarkdown(graph: BowtieGraphData): string {
   }
   threats.forEach((threat, i) => {
     lines.push(`### ${i + 1}. ${escapeMd(threat.label)}`);
+    const threatCategory = findCategory(graph, threat.category_id);
+    if (threatCategory) lines.push(`**Categoria:** ${escapeMd(threatCategory.label)}`);
     if (threat.description) lines.push(escapeMd(threat.description));
     lines.push('');
     const barriers = preventiveBarriersByThreat[threat.id] ?? [];
@@ -70,6 +79,8 @@ export function bowtieToMarkdown(graph: BowtieGraphData): string {
   }
   consequences.forEach((consequence, i) => {
     lines.push(`### ${i + 1}. ${escapeMd(consequence.label)}`);
+    const consequenceCategory = findCategory(graph, consequence.category_id);
+    if (consequenceCategory) lines.push(`**Categoria:** ${escapeMd(consequenceCategory.label)}`);
     if (consequence.description) lines.push(escapeMd(consequence.description));
     lines.push('');
     const barriers = mitigativeBarriersByConsequence[consequence.id] ?? [];

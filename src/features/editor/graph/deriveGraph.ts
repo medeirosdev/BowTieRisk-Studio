@@ -1,5 +1,5 @@
 import type { Edge } from '@xyflow/react';
-import type { Bowtie, Consequence, MitigativeBarrier, PreventiveBarrier, Threat } from '../../../types/domain';
+import type { Bowtie, Category, Consequence, MitigativeBarrier, PreventiveBarrier, Threat } from '../../../types/domain';
 import type { BowtieNodeData } from './types';
 
 // Estrutura de domínio já carregada, agrupada por pai — a mesma forma serve
@@ -10,6 +10,11 @@ export interface BowtieGraphData {
   preventiveBarriersByThreat: Record<string, PreventiveBarrier[]>;
   consequences: Consequence[];
   mitigativeBarriersByConsequence: Record<string, MitigativeBarrier[]>;
+  categories: Category[];
+}
+
+export function findCategory(graph: BowtieGraphData, categoryId: string | null): Category | null {
+  return categoryId ? (graph.categories.find((c) => c.id === categoryId) ?? null) : null;
 }
 
 export interface RawNode {
@@ -25,7 +30,7 @@ export function deriveGraph(graph: BowtieGraphData): { nodes: RawNode[]; edges: 
 
   for (const threat of graph.threats) {
     const threatNodeId = `threat:${threat.id}`;
-    nodes.push({ id: threatNodeId, data: { kind: 'threat', threat } });
+    nodes.push({ id: threatNodeId, data: { kind: 'threat', threat, category: findCategory(graph, threat.category_id) } });
 
     let previousId = threatNodeId;
     for (const barrier of graph.preventiveBarriersByThreat[threat.id] ?? []) {
@@ -39,7 +44,7 @@ export function deriveGraph(graph: BowtieGraphData): { nodes: RawNode[]; edges: 
 
   for (const consequence of graph.consequences) {
     const consequenceNodeId = `consequence:${consequence.id}`;
-    nodes.push({ id: consequenceNodeId, data: { kind: 'consequence', consequence } });
+    nodes.push({ id: consequenceNodeId, data: { kind: 'consequence', consequence, category: findCategory(graph, consequence.category_id) } });
 
     let previousId = 'top-event';
     for (const barrier of graph.mitigativeBarriersByConsequence[consequence.id] ?? []) {

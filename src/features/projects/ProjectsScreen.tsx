@@ -1,6 +1,15 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { createProject, deleteProject, getProject, listProjects, openProject, renameProject, resolveProjectDbPath } from '../../db/repositories/projectRepo';
+import {
+  createProject,
+  deleteProject,
+  listProjects,
+  openProject,
+  ProjectLockedError,
+  readProjectDetails,
+  renameProject,
+} from '../../db/repositories/projectRepo';
 import type { ProjectIndexEntry } from '../../db/indexFile';
+import { getBancosDir } from '../../db/paths';
 import { useDialog } from '../ui/DialogProvider';
 import { strings } from '../../i18n/strings.pt-BR';
 import { useCurrentUserStore } from '../../store/currentUserStore';
@@ -22,10 +31,21 @@ export function ProjectsScreen() {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameDescription, setRenameDescription] = useState('');
+  const [dataFolder, setDataFolder] = useState<string | null>(null);
 
   useEffect(() => {
     void refresh();
+    // Mostra onde os projetos estão sendo lidos/gravados: se o .exe for
+    // copiado pra fora da pasta compartilhada, o app cria uma bancos/ vazia
+    // ao lado dele — sem essa linha, isso parece "meus projetos sumiram".
+    getBancosDir()
+      .then(setDataFolder)
+      .catch((err) => console.error(err));
   }, []);
+
+  function saveErrorMessage(err: unknown): string {
+    return err instanceof ProjectLockedError ? strings.projects.lockedBy(err.holder.user_name) : strings.common.saveError;
+  }
 
   async function refresh() {
     setLoading(true);
@@ -85,7 +105,7 @@ export function ProjectsScreen() {
       await refresh();
     } catch (err) {
       console.error(err);
-      setError(strings.common.saveError);
+      setError(saveErrorMessage(err));
     }
   }
 
@@ -94,8 +114,7 @@ export function ProjectsScreen() {
     setRenameValue(entry.name);
     setRenameDescription('');
     try {
-      const dbPath = await resolveProjectDbPath(entry);
-      const project = await getProject(dbPath, entry.id);
+      const project = await readProjectDetails(entry);
       setRenameDescription(project.description ?? '');
     } catch (err) {
       console.error(err);
@@ -108,13 +127,12 @@ export function ProjectsScreen() {
     const trimmed = renameValue.trim();
     if (!trimmed) return;
     try {
-      const dbPath = await resolveProjectDbPath(entry);
-      await renameProject(dbPath, entry.id, trimmed, renameDescription.trim() || null, user);
+      await renameProject(entry, trimmed, renameDescription.trim() || null, user);
       setRenamingId(null);
       await refresh();
     } catch (err) {
       console.error(err);
-      setError(strings.common.saveError);
+      setError(saveErrorMessage(err));
     }
   }
 
@@ -123,6 +141,7 @@ export function ProjectsScreen() {
       <div className="screen__header">
         <h2>{strings.projects.title}</h2>
         <p>{strings.projects.subtitle}</p>
+        {dataFolder && <p className="data-folder">{strings.projects.dataFolder(dataFolder)}</p>}
       </div>
 
       {error && <p className="error-text">{error}</p>}
@@ -142,7 +161,7 @@ export function ProjectsScreen() {
                     void submitRename(entry);
                   }}
                 >
-                  <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus />
+                  <input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} maxLength={80} autoFocus />
                   <textarea
                     value={renameDescription}
                     onChange={(e) => setRenameDescription(e.target.value)}
@@ -183,7 +202,7 @@ export function ProjectsScreen() {
         <form className="form" onSubmit={handleCreate}>
           <label className="field">
             {strings.projects.nameLabel}
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={strings.projects.namePlaceholder} />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={strings.projects.namePlaceholder} maxLength={80} />
           </label>
           <label className="field">
             {strings.projects.descriptionLabel}

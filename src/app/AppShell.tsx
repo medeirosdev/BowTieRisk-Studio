@@ -1,9 +1,13 @@
+import { useEffect, useRef } from 'react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { BowtieMark } from '../components/BowtieMark';
-import { closeProject } from '../db/repositories/projectRepo';
+import type { LockInfo } from '../db/lockRepo';
+import { abandonProject, closeProject } from '../db/repositories/projectRepo';
 import { AuditScreen } from '../features/audit/AuditScreen';
-import { BarrierTypesScreen } from '../features/barrierTypes/BarrierTypesScreen';
 import { BowtiesScreen } from '../features/bowties/BowtiesScreen';
 import { EditorScreen } from '../features/editor/EditorScreen';
+import { ProjectNoticeBanner } from '../features/projectSettings/ProjectNoticeBanner';
+import { ProjectSettingsScreen } from '../features/projectSettings/ProjectSettingsScreen';
 import { ProjectsScreen } from '../features/projects/ProjectsScreen';
 import { SessionsScreen } from '../features/sessions/SessionsScreen';
 import { StatusBar } from '../features/sync/StatusBar';
@@ -24,29 +28,68 @@ export function AppShell() {
   const goToSessions = useNavStore((s) => s.goToSessions);
   const goToBowties = useNavStore((s) => s.goToBowties);
   const goToAudit = useNavStore((s) => s.goToAudit);
-  const goToBarrierTypes = useNavStore((s) => s.goToBarrierTypes);
+  const goToSettings = useNavStore((s) => s.goToSettings);
   const project = useOpenProjectStore((s) => s.project);
   const setOpenProject = useOpenProjectStore((s) => s.setProject);
-  const { alert } = useDialog();
+  const patchProject = useOpenProjectStore((s) => s.patchProject);
+  const { alert, confirm } = useDialog();
 
-  useHeartbeat(project);
+  useHeartbeat(project, user, (holder: LockInfo) => {
+    if (!project) return;
+    patchProject(project.id, { readOnly: true, lockOwner: holder });
+    void alert(strings.sync.lockLost(holder.user_name));
+  });
 
-  // Fecha (sincroniza + libera o lock) o projeto atual, se houver. Retorna
-  // false se o sync falhar — quem chamou decide o que fazer (não navegar,
-  // avisar o usuário) em vez de perder silenciosamente edições não
-  // publicadas (о lock só é liberado se o sync deu certo, ver closeProject).
+  // Fecha (sincroniza + libera o lock) o projeto atual, se houver. Se o sync
+  // falhar, pergunta: ficar e tentar de novo (retorna false — quem chamou não
+  // navega) ou sair mesmo assim (as edições ficam na cópia de trabalho e são
+  // recuperadas na próxima abertura, ver prepareWorkingCopy em projectRepo).
   async function closeCurrentProject(): Promise<boolean> {
-    if (!project || !user) return true;
+    const current = useOpenProjectStore.getState().project;
+    if (!current || !user) return true;
     try {
-      await closeProject(project, user);
+      await closeProject(current, user);
       setOpenProject(null);
       return true;
     } catch (err) {
       console.error(err);
-      await alert(strings.sync.closeSyncError);
-      return false;
+      const detail = err instanceof Error ? err.message : String(err);
+      const leave = await confirm(strings.sync.closeSyncErrorLeave(detail), {
+        confirmLabel: strings.sync.leaveAnyway,
+        cancelLabel: strings.sync.stay,
+        danger: true,
+      });
+      if (!leave) return false;
+      await abandonProject(current).catch((e) => console.error(e));
+      setOpenProject(null);
+      return true;
     }
   }
+
+  // Fechar a janela passa pelo mesmo caminho de "sair do projeto" — sem
+  // isso, o X da janela descartava o que não tinha sido sincronizado e
+  // deixava o lock preso por 3 minutos.
+  const closeRef = useRef(closeCurrentProject);
+  closeRef.current = closeCurrentProject;
+  useEffect(() => {
+    const win = getCurrentWindow();
+    let closing = false;
+    const unlisten = win.onCloseRequested(async (event) => {
+      event.preventDefault();
+      if (closing) return;
+      closing = true;
+      try {
+        if (await closeRef.current()) {
+          await win.destroy();
+        }
+      } finally {
+        closing = false;
+      }
+    });
+    return () => {
+      void unlisten.then((fn) => fn());
+    };
+  }, []);
 
   async function handleGoToProjects() {
     if (await closeCurrentProject()) {
@@ -104,10 +147,10 @@ export function AppShell() {
               <span>{strings.audit.title}</span>
             </>
           )}
-          {view.screen === 'barrierTypes' && (
+          {view.screen === 'settings' && (
             <>
               <span>/</span>
-              <span>{strings.barrierTypes.title}</span>
+              <span>{strings.projectSettings.title}</span>
             </>
           )}
         </div>
@@ -126,8 +169,10 @@ export function AppShell() {
       </header>
 
       {view.screen !== 'projects' && project && user && (
-        <StatusBar project={project} user={user} onProjectUpdate={setOpenProject} onOpenAudit={goToAudit} onOpenBarrierTypes={goToBarrierTypes} />
+        <StatusBar key={project.id} project={project} user={user} onOpenAudit={goToAudit} onOpenSettings={goToSettings} />
       )}
+
+      {view.screen !== 'projects' && project?.notice && <ProjectNoticeBanner notice={project.notice} />}
 
       <div className={`shell__content${view.screen === 'editor' ? ' shell__content--full' : ''}`}>
         {view.screen === 'projects' && <ProjectsScreen />}
@@ -135,7 +180,7 @@ export function AppShell() {
         {view.screen === 'bowties' && <BowtiesScreen />}
         {view.screen === 'editor' && <EditorScreen />}
         {view.screen === 'audit' && <AuditScreen />}
-        {view.screen === 'barrierTypes' && <BarrierTypesScreen />}
+        {view.screen === 'settings' && <ProjectSettingsScreen />}
       </div>
     </div>
   );

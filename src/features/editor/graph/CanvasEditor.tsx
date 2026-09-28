@@ -16,8 +16,9 @@ import '@xyflow/react/dist/style.css';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { toPng } from 'html-to-image';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { listBarrierTypes } from '../../../db/repositories/barrierTypeRepo';
+import { listCategories } from '../../../db/repositories/categoryRepo';
 import type { BarrierTypeRow } from '../../../db/repositories/barrierTypeRepo';
 import { getBowtie } from '../../../db/repositories/bowtieRepo';
 import { listNodePositions, saveNodePosition } from '../../../db/repositories/nodePositionRepo';
@@ -33,6 +34,8 @@ import type { BowtieGraphData } from './deriveGraph';
 import { computeLayout } from './layout';
 import { minimapNodeColor } from './nodeColors';
 import { nodeTypes } from './nodeTypes';
+import { dimmedNodeIds } from './categoryFilter';
+import { CategoryFilter } from './CategoryFilter';
 import { bowtieToMarkdown } from './exportMarkdown';
 import { PrintReport } from './PrintReport';
 import { consequenceRepo, mitigativeBarrierRepo, preventiveBarrierRepo, threatRepo } from './repoAdapters';
@@ -78,20 +81,26 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [creatingSide, setCreatingSide] = useState<'threat' | 'consequence' | null>(null);
+  const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
   const { fitView } = useReactFlow();
   const previousNodeCount = useRef<number | null>(null);
+  // Lido dentro de load(): recarregar o grafo recria todos os nós sem a flag
+  // `selected`, e o destaque do nó cujo painel está aberto sumia.
+  const selectedNodeIdRef = useRef<string | null>(null);
+  selectedNodeIdRef.current = selectedNodeId;
   const { confirm, isOpen: isDialogOpen } = useDialog();
   const resolvedTheme = useThemeStore((s) => s.resolved);
 
   const load = useCallback(async () => {
     try {
-      const [bowtie, threats, consequences, positions, types] = await Promise.all([
+      const [bowtie, threats, consequences, positions, types, categories] = await Promise.all([
         getBowtie(dbPath, bowtieId),
         threatRepo.list(dbPath, bowtieId),
         consequenceRepo.list(dbPath, bowtieId),
         listNodePositions(dbPath, bowtieId),
         listBarrierTypes(dbPath),
+        listCategories(dbPath),
       ]);
       setBarrierTypes(types);
 
@@ -102,12 +111,13 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
         await Promise.all(consequences.map(async (c) => [c.id, await mitigativeBarrierRepo.list(dbPath, c.id)] as const)),
       );
 
-      const nextGraph: BowtieGraphData = { bowtie, threats, preventiveBarriersByThreat, consequences, mitigativeBarriersByConsequence };
+      const nextGraph: BowtieGraphData = { bowtie, threats, preventiveBarriersByThreat, consequences, mitigativeBarriersByConsequence, categories };
       const { nodes: rawNodes, edges: nextEdges } = deriveGraph(nextGraph);
       const layouted = computeLayout(nextGraph, rawNodes, positions.map((p) => ({ nodeId: p.node_id, x: p.x, y: p.y })));
 
       setGraph(nextGraph);
-      setNodes(layouted);
+      const selectedId = selectedNodeIdRef.current;
+      setNodes(selectedId ? layouted.map((n) => (n.id === selectedId ? { ...n, selected: true } : n)) : layouted);
       setEdges(nextEdges);
       setError(null);
     } catch (err) {
@@ -134,6 +144,19 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
   }, [nodes.length, fitView]);
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
+
+  // Filtro de categorias: só muda a aparência (classe CSS) do que é
+  // renderizado — o estado de nós/arestas do React Flow continua intacto,
+  // então arrastar/selecionar um nó filtrado segue funcionando normalmente.
+  const dimmed = useMemo(() => (graph ? dimmedNodeIds(graph, hiddenCategories) : new Set<string>()), [graph, hiddenCategories]);
+  const displayNodes = useMemo(
+    () => (dimmed.size === 0 ? nodes : nodes.map((n) => (dimmed.has(n.id) ? { ...n, className: 'is-dimmed' } : n))),
+    [nodes, dimmed],
+  );
+  const displayEdges = useMemo(
+    () => (dimmed.size === 0 ? edges : edges.map((e) => (dimmed.has(e.source) || dimmed.has(e.target) ? { ...e, className: 'is-dimmed' } : e))),
+    [edges, dimmed],
+  );
 
   const handleNodeClick = useCallback((_event: unknown, node: Node<BowtieNodeData>) => {
     setCreatingSide(null);
@@ -193,13 +216,22 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
     [dbPath, graph, load, nodes, user],
   );
 
+  // Com vários nós selecionados, o React Flow arrasta todos juntos e passa
+  // a lista completa em `dragged` — salvar só `node` perdia a posição dos
+  // demais na próxima recarga.
   const handleNodeDragStop = useCallback(
-    (_event: unknown, node: Node<BowtieNodeData>) => {
+    (_event: unknown, node: Node<BowtieNodeData>, dragged: Node<BowtieNodeData>[]) => {
       if (node.data.kind === 'prevention-barrier' || node.data.kind === 'mitigation-barrier') {
         void handleBarrierDragStop(node);
-      } else {
-        void saveNodePosition(dbPath, bowtieId, node.id, node.position.x, node.position.y);
+        return;
       }
+      const free = (dragged.length > 0 ? dragged : [node]).filter(
+        (n) => n.data.kind !== 'prevention-barrier' && n.data.kind !== 'mitigation-barrier',
+      );
+      Promise.all(free.map((n) => saveNodePosition(dbPath, bowtieId, n.id, n.position.x, n.position.y))).catch((err) => {
+        console.error(err);
+        setError(strings.common.saveError);
+      });
     },
     [dbPath, bowtieId, handleBarrierDragStop],
   );
@@ -310,14 +342,19 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
     <div className="canvas-editor">
       <div className="canvas-editor__flow">
         <ReactFlow
-          nodes={nodes}
-          edges={edges}
+          nodes={displayNodes}
+          edges={displayEdges}
           nodeTypes={nodeTypes}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
           onPaneClick={handlePaneClick}
           onNodeDragStop={handleNodeDragStop}
+          // Sem isso, Backspace (padrão do React Flow) tira o nó da tela sem
+          // passar pelo banco nem pela confirmação — ele "some" e volta na
+          // próxima recarga. A exclusão real é pela tecla Delete (atalho
+          // acima) ou pelo botão do painel.
+          deleteKeyCode={null}
           nodesDraggable={!readOnly}
           colorMode={resolvedTheme}
           fitView
@@ -361,6 +398,7 @@ function CanvasEditorInner({ dbPath, bowtieId, user, readOnly }: CanvasEditorPro
           <button type="button" className="btn-secondary" onClick={() => window.print()}>
             {strings.editor.print}
           </button>
+          <CategoryFilter categories={graph.categories} hidden={hiddenCategories} onChange={setHiddenCategories} />
         </div>
 
         {error && <p className="error-text canvas-editor__error">{error}</p>}

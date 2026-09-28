@@ -1,28 +1,37 @@
 import { useState } from 'react';
+import { LockLostError } from '../../db/lockRepo';
 import { syncProject } from '../../db/repositories/projectRepo';
 import type { OpenProject } from '../../db/repositories/projectRepo';
 import { strings } from '../../i18n/strings.pt-BR';
 import type { CurrentUser } from '../../store/currentUserStore';
+import { useOpenProjectStore } from '../../store/openProjectStore';
 
 interface StatusBarProps {
   project: OpenProject;
   user: CurrentUser;
-  onProjectUpdate: (project: OpenProject) => void;
   onOpenAudit: () => void;
-  onOpenBarrierTypes: () => void;
+  onOpenSettings: () => void;
 }
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-export function StatusBar({ project, user, onProjectUpdate, onOpenAudit, onOpenBarrierTypes }: StatusBarProps) {
+function initialMessage(project: OpenProject): string | null {
+  const parts: string[] = [];
+  if (project.recovery?.kind === 'resumed') parts.push(strings.sync.recoveredResumed);
+  if (project.recovery?.kind === 'stashed') parts.push(strings.sync.recoveredStashed(project.recovery.path));
+  if (project.reclaimedStaleLockFrom) parts.push(strings.sync.reclaimedLock(project.reclaimedStaleLockFrom));
+  return parts.length > 0 ? parts.join(' ') : null;
+}
+
+export function StatusBar({ project, user, onOpenAudit, onOpenSettings }: StatusBarProps) {
+  const patchProject = useOpenProjectStore((s) => s.patchProject);
   const [syncing, setSyncing] = useState(false);
-  // Aviso único ao reivindicar um lock obsoleto de outra pessoa (about.md,
-  // Seção 6.3) — inicializado só na primeira renderização deste projeto.
-  const [message, setMessage] = useState<string | null>(
-    project.reclaimedStaleLockFrom ? strings.sync.reclaimedLock(project.reclaimedStaleLockFrom) : null,
-  );
+  // Avisos únicos da abertura (lock obsoleto reivindicado — about.md, Seção
+  // 6.3 — e edições recuperadas de uma sessão anterior), inicializados só na
+  // primeira renderização deste projeto.
+  const [message, setMessage] = useState<string | null>(() => initialMessage(project));
 
   async function handleSync() {
     if (syncing || project.readOnly) return;
@@ -30,7 +39,7 @@ export function StatusBar({ project, user, onProjectUpdate, onOpenAudit, onOpenB
     setMessage(null);
     try {
       const result = await syncProject(project, user);
-      onProjectUpdate(result.project);
+      patchProject(project.id, { lastSyncAt: result.project.lastSyncAt, openedCanonicalMtimeMs: result.project.openedCanonicalMtimeMs });
       if (result.conflict) {
         setMessage(strings.sync.conflictWarning);
       } else if (!result.integrityOk) {
@@ -38,6 +47,11 @@ export function StatusBar({ project, user, onProjectUpdate, onOpenAudit, onOpenB
       }
     } catch (err) {
       console.error(err);
+      if (err instanceof LockLostError) {
+        patchProject(project.id, { readOnly: true, lockOwner: err.holder });
+        setMessage(strings.sync.lockLost(err.holder.user_name));
+        return;
+      }
       const detail = err instanceof Error ? err.message : String(err);
       setMessage(`${strings.common.saveError} (${detail})`);
     } finally {
@@ -60,8 +74,8 @@ export function StatusBar({ project, user, onProjectUpdate, onOpenAudit, onOpenB
 
       <span className="status-bar__meta">{project.lastSyncAt ? strings.sync.lastSync(formatTime(project.lastSyncAt)) : strings.sync.neverSynced}</span>
 
-      <button type="button" className="icon-btn status-bar__audit-link" onClick={onOpenBarrierTypes}>
-        {strings.barrierTypes.title}
+      <button type="button" className="icon-btn status-bar__audit-link" onClick={onOpenSettings}>
+        {strings.projectSettings.title}
       </button>
 
       <button type="button" className="icon-btn" onClick={onOpenAudit}>

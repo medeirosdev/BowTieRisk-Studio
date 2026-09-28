@@ -1,6 +1,16 @@
 import { EFFECTIVENESS_LABELS, EFFECTIVENESS_NOT_EVALUATED_LABEL } from '../../../types/enums';
 import type { MitigativeBarrier, PreventiveBarrier } from '../../../types/domain';
+import { findCategory } from './deriveGraph';
 import type { BowtieGraphData } from './deriveGraph';
+
+function CategoryLine({ label }: { label: string | undefined }) {
+  if (!label) return null;
+  return (
+    <p>
+      <strong>Categoria:</strong> {label}
+    </p>
+  );
+}
 
 function BarrierItem({ barrier }: { barrier: PreventiveBarrier | MitigativeBarrier }) {
   const effectiveness = barrier.effectiveness ? EFFECTIVENESS_LABELS[barrier.effectiveness] : EFFECTIVENESS_NOT_EVALUATED_LABEL;
@@ -41,6 +51,7 @@ export function PrintReport({ graph }: { graph: BowtieGraphData }) {
       {threats.map((threat) => (
         <section key={threat.id}>
           <h3>{threat.label}</h3>
+          <CategoryLine label={findCategory(graph, threat.category_id)?.label} />
           {threat.description && <p>{threat.description}</p>}
           {(preventiveBarriersByThreat[threat.id] ?? []).length === 0 ? (
             <p>Sem barreiras preventivas cadastradas.</p>
@@ -59,6 +70,7 @@ export function PrintReport({ graph }: { graph: BowtieGraphData }) {
       {consequences.map((consequence) => (
         <section key={consequence.id}>
           <h3>{consequence.label}</h3>
+          <CategoryLine label={findCategory(graph, consequence.category_id)?.label} />
           {consequence.description && <p>{consequence.description}</p>}
           {(mitigativeBarriersByConsequence[consequence.id] ?? []).length === 0 ? (
             <p>Sem barreiras mitigatórias cadastradas.</p>

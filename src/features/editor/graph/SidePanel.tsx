@@ -4,7 +4,8 @@ import { updateBowtie } from '../../../db/repositories/bowtieRepo';
 import { strings } from '../../../i18n/strings.pt-BR';
 import type { CurrentUser } from '../../../store/currentUserStore';
 import { useDialog } from '../../ui/DialogProvider';
-import type { Bowtie } from '../../../types/domain';
+import { CategorySelect } from '../../categories/CategorySelect';
+import type { Bowtie, Category } from '../../../types/domain';
 import type { BarrierTypeRow } from '../../../db/repositories/barrierTypeRepo';
 import { EFFECTIVENESS_LABELS, EFFECTIVENESS_NOT_EVALUATED_LABEL, EFFECTIVENESS_SCALE } from '../../../types/enums';
 import type { Effectiveness } from '../../../types/enums';
@@ -13,7 +14,7 @@ import type { BowtieGraphData } from './deriveGraph';
 import { consequenceRepo, mitigativeBarrierRepo, preventiveBarrierRepo, threatRepo } from './repoAdapters';
 import type { BowtieNodeData } from './types';
 
-type OrderedEntity = { id: string; label: string; description: string | null; order_index: number };
+type OrderedEntity = { id: string; label: string; description: string | null; category_id: string | null; order_index: number };
 type BarrierEntity = {
   id: string;
   label: string;
@@ -24,7 +25,7 @@ type BarrierEntity = {
 };
 
 interface ItemRepo<TItem extends OrderedEntity> {
-  update: (dbPath: string, item: TItem, label: string, description: string | null, user: CurrentUser) => Promise<void>;
+  update: (dbPath: string, item: TItem, label: string, description: string | null, categoryId: string | null, user: CurrentUser) => Promise<void>;
   remove: (dbPath: string, item: TItem, user: CurrentUser) => Promise<void>;
 }
 
@@ -52,10 +53,14 @@ export function SidePanel({ dbPath, user, graph, barrierTypes, selectedNode, cre
     return (
       <aside className="side-panel">
         <NewLaneItemForm
+          // Remonta ao trocar de lado: a categoria escolhida pra uma ameaça
+          // não pode sobrar no formulário de consequência (listas separadas).
+          key={creatingSide}
           dbPath={dbPath}
           bowtieId={graph.bowtie.id}
           user={user}
           side={creatingSide}
+          categories={graph.categories.filter((c) => c.kind === creatingSide)}
           onDone={onReload}
           onClose={onClose}
         />
@@ -78,6 +83,7 @@ export function SidePanel({ dbPath, user, graph, barrierTypes, selectedNode, cre
           user={user}
           item={selectedNode.data.threat}
           barriers={graph.preventiveBarriersByThreat[selectedNode.data.threat.id] ?? []}
+          categories={graph.categories.filter((c) => c.kind === 'threat')}
           barrierTypes={barrierTypes}
           itemRepo={threatRepo}
           barrierRepo={preventiveBarrierRepo}
@@ -96,6 +102,7 @@ export function SidePanel({ dbPath, user, graph, barrierTypes, selectedNode, cre
           user={user}
           item={selectedNode.data.consequence}
           barriers={graph.mitigativeBarriersByConsequence[selectedNode.data.consequence.id] ?? []}
+          categories={graph.categories.filter((c) => c.kind === 'consequence')}
           barrierTypes={barrierTypes}
           itemRepo={consequenceRepo}
           barrierRepo={mitigativeBarrierRepo}
@@ -159,6 +166,7 @@ function TopEventPanel({
   const [hazard, setHazard] = useState(bowtie.hazard ?? '');
   const [topEvent, setTopEvent] = useState(bowtie.top_event ?? '');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setHazard(bowtie.hazard ?? '');
@@ -176,7 +184,11 @@ function TopEventPanel({
         { name: bowtie.name, description: bowtie.description, hazard: hazard.trim() || null, top_event: topEvent.trim() || null },
         user,
       );
+      setError(null);
       await onSaved();
+    } catch (err) {
+      console.error(err);
+      setError(strings.common.saveError);
     } finally {
       setSaving(false);
     }
@@ -199,6 +211,7 @@ function TopEventPanel({
           {strings.editor.topEventLabel}
           <input value={topEvent} onChange={(e) => setTopEvent(e.target.value)} placeholder={strings.editor.topEventPlaceholder} />
         </label>
+        {error && <p className="error-text">{error}</p>}
         <div className="form__actions">
           <button type="submit" disabled={saving}>
             {strings.common.save}
@@ -215,6 +228,7 @@ interface LaneItemPanelProps<TItem extends OrderedEntity, TBarrier extends Barri
   user: CurrentUser;
   item: TItem;
   barriers: TBarrier[];
+  categories: Category[];
   barrierTypes: BarrierTypeRow[];
   itemRepo: ItemRepo<TItem>;
   barrierRepo: BarrierRepo<TBarrier>;
@@ -230,6 +244,7 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
   user,
   item,
   barriers,
+  categories,
   barrierTypes,
   itemRepo,
   barrierRepo,
@@ -240,11 +255,15 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
   onClose,
 }: LaneItemPanelProps<TItem, TBarrier>) {
   const [label, setLabel] = useState(item.label);
+  const [categoryId, setCategoryId] = useState(item.category_id);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { confirm } = useDialog();
 
-  useEffect(() => setLabel(item.label), [item.id, item.label]);
+  useEffect(() => {
+    setLabel(item.label);
+    setCategoryId(item.category_id);
+  }, [item.id, item.label, item.category_id]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -252,7 +271,7 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
     if (!trimmed || saving) return;
     setSaving(true);
     try {
-      await itemRepo.update(dbPath, item, trimmed, item.description, user);
+      await itemRepo.update(dbPath, item, trimmed, item.description, categoryId, user);
       await onReload();
     } catch (err) {
       console.error(err);
@@ -274,13 +293,16 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
     }
   }
 
-  async function handleAddBarrier(input: BarrierInput) {
+  async function handleAddBarrier(input: BarrierInput): Promise<boolean> {
     try {
       await barrierRepo.create(dbPath, item.id, input, user);
+      setError(null);
       await onReload();
+      return true;
     } catch (err) {
       console.error(err);
       setError(strings.common.saveError);
+      return false;
     }
   }
 
@@ -317,6 +339,10 @@ function LaneItemPanel<TItem extends OrderedEntity, TBarrier extends BarrierEnti
       <form className="form" onSubmit={submit}>
         <fieldset className="form-fieldset" disabled={readOnly}>
           <input value={label} onChange={(e) => setLabel(e.target.value)} />
+          <label className="field">
+            {strings.categories.label}
+            <CategorySelect categories={categories} value={categoryId} onChange={setCategoryId} />
+          </label>
           <div className="form__actions">
             <button type="button" className="btn-danger" onClick={() => void handleDelete()}>
               {strings.common.delete}
@@ -350,7 +376,7 @@ interface BarrierManagerProps<TBarrier extends BarrierEntity> {
   barrierTypes: BarrierTypeRow[];
   barrierNounSingular: string;
   readOnly: boolean;
-  onAdd: (input: BarrierInput) => void;
+  onAdd: (input: BarrierInput) => Promise<boolean>;
   onRemove: (barrier: TBarrier) => void;
   onReorder: (id: string, direction: 'up' | 'down') => void;
 }
@@ -362,15 +388,23 @@ function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierTypes
   const [effectiveness, setEffectiveness] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  function submit(event: FormEvent) {
+  const [submitting, setSubmitting] = useState(false);
+
+  // Só limpa o formulário depois que a barreira foi de fato gravada — se der
+  // erro, o que foi digitado continua lá pra tentar de novo.
+  async function submit(event: FormEvent) {
     event.preventDefault();
+    if (submitting) return;
     const trimmed = label.trim();
     if (!trimmed) {
       setError(strings.editor.barrierLabelRequired);
       return;
     }
     setError(null);
-    onAdd({ label: trimmed, description: null, barrier_type: barrierType || null, effectiveness: effectiveness ? (Number(effectiveness) as Effectiveness) : null });
+    setSubmitting(true);
+    const ok = await onAdd({ label: trimmed, description: null, barrier_type: barrierType || null, effectiveness: effectiveness ? (Number(effectiveness) as Effectiveness) : null });
+    setSubmitting(false);
+    if (!ok) return;
     setLabel('');
     setBarrierType('');
     setEffectiveness('');
@@ -438,7 +472,7 @@ function BarrierManager<TBarrier extends BarrierEntity>({ barriers, barrierTypes
               >
                 {strings.common.cancel}
               </button>
-              <button type="submit">{strings.common.add}</button>
+              <button type="submit" disabled={submitting}>{strings.common.add}</button>
             </div>
           </form>
         ) : (
@@ -519,7 +553,9 @@ function BarrierPanel<TBarrier extends BarrierEntity>({ dbPath, user, barrier, b
       <fieldset className="form-fieldset" disabled={readOnly}>
         <label className="field">
           {strings.editor.barrierLabelPlaceholder(barrierNounSingular)}
-          <input value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
+          {/* Sem autoFocus: com o foco no campo, a tecla Delete (atalho de
+              excluir o nó selecionado) passaria a apagar texto. */}
+          <input value={label} onChange={(e) => setLabel(e.target.value)} />
         </label>
 
         <label className="field">
@@ -575,6 +611,7 @@ function NewLaneItemForm({
   bowtieId,
   user,
   side,
+  categories,
   onDone,
   onClose,
 }: {
@@ -582,10 +619,12 @@ function NewLaneItemForm({
   bowtieId: string;
   user: CurrentUser;
   side: 'threat' | 'consequence';
+  categories: Category[];
   onDone: () => Promise<void> | void;
   onClose: () => void;
 }) {
   const [label, setLabel] = useState('');
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isThreat = side === 'threat';
@@ -597,9 +636,9 @@ function NewLaneItemForm({
     setSaving(true);
     try {
       if (isThreat) {
-        await threatRepo.create(dbPath, bowtieId, trimmed, null, user);
+        await threatRepo.create(dbPath, bowtieId, trimmed, null, categoryId, user);
       } else {
-        await consequenceRepo.create(dbPath, bowtieId, trimmed, null, user);
+        await consequenceRepo.create(dbPath, bowtieId, trimmed, null, categoryId, user);
       }
       setLabel('');
       await onDone();
@@ -625,6 +664,10 @@ function NewLaneItemForm({
         placeholder={isThreat ? strings.editor.threatPlaceholder : strings.editor.consequencePlaceholder}
         autoFocus
       />
+      <label className="field">
+        {strings.categories.label}
+        <CategorySelect categories={categories} value={categoryId} onChange={setCategoryId} />
+      </label>
       {error && <p className="error-text">{error}</p>}
       <div className="form__actions">
         <button type="submit" disabled={saving}>

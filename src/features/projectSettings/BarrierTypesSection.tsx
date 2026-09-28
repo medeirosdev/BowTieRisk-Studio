@@ -1,18 +1,13 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { createBarrierType, deleteBarrierType, listBarrierTypes } from '../../db/repositories/barrierTypeRepo';
 import type { BarrierTypeRow } from '../../db/repositories/barrierTypeRepo';
+import type { OpenProject } from '../../db/repositories/projectRepo';
 import { strings } from '../../i18n/strings.pt-BR';
-import { useCurrentUserStore } from '../../store/currentUserStore';
-import { useNavStore } from '../../store/navStore';
-import { useOpenProjectStore } from '../../store/openProjectStore';
+import type { CurrentUser } from '../../store/currentUserStore';
 import { useDialog } from '../ui/DialogProvider';
 
-export function BarrierTypesScreen() {
-  const project = useOpenProjectStore((s) => s.project);
-  const user = useCurrentUserStore((s) => s.user);
-  const goBack = useNavStore((s) => s.goBackFromBarrierTypes);
+export function BarrierTypesSection({ project, user }: { project: OpenProject; user: CurrentUser }) {
   const { confirm } = useDialog();
-
   const [types, setTypes] = useState<BarrierTypeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,10 +16,9 @@ export function BarrierTypesScreen() {
 
   useEffect(() => {
     void refresh();
-  }, [project?.dbPath]);
+  }, [project.dbPath]);
 
   async function refresh() {
-    if (!project) return;
     setLoading(true);
     try {
       setTypes(await listBarrierTypes(project.dbPath));
@@ -39,7 +33,7 @@ export function BarrierTypesScreen() {
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault();
-    if (!project || !user || saving) return;
+    if (saving) return;
     const trimmed = label.trim();
     if (!trimmed) {
       setError(strings.barrierTypes.nameRequired);
@@ -65,7 +59,6 @@ export function BarrierTypesScreen() {
   }
 
   async function handleDelete(type: BarrierTypeRow) {
-    if (!project || !user) return;
     if (!(await confirm(strings.barrierTypes.confirmDelete(type.label)))) return;
     try {
       await deleteBarrierType(project.dbPath, type, user);
@@ -76,59 +69,42 @@ export function BarrierTypesScreen() {
     }
   }
 
-  if (!project) return null;
-
   return (
-    <div className="screen" style={{ maxWidth: 640 }}>
-      <div className="screen__header">
-        <div className="audit-header">
-          <div>
-            <h2>{strings.barrierTypes.title}</h2>
-            <p>{strings.barrierTypes.subtitle(project.name)}</p>
-          </div>
-          <button type="button" className="btn-secondary" onClick={goBack}>
-            {strings.common.back}
-          </button>
-        </div>
-      </div>
+    <section className="panel settings-section">
+      <h3 className="section-title">{strings.barrierTypes.title}</h3>
 
       {error && <p className="error-text">{error}</p>}
 
       {loading ? null : types.length === 0 ? (
         <p className="empty-state">{strings.barrierTypes.empty}</p>
       ) : (
-        <div className="list">
+        <ul className="settings-list">
           {types.map((type) => (
-            <div className="list-item" key={type.id}>
-              <span className="list-item__title">{type.label}</span>
+            <li className="settings-list__item" key={type.id}>
+              <span className="settings-list__label">{type.label}</span>
               {!project.readOnly && (
-                <div className="list-item__actions">
-                  <button className="icon-btn icon-btn--danger" onClick={() => void handleDelete(type)}>
-                    {strings.common.delete}
-                  </button>
-                </div>
+                <button type="button" className="icon-btn icon-btn--danger" onClick={() => void handleDelete(type)}>
+                  {strings.common.delete}
+                </button>
               )}
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
       {!project.readOnly && (
-        <div className="panel">
-          <p className="section-title">{strings.barrierTypes.addTitle}</p>
-          <form className="form" onSubmit={handleCreate}>
-            <label className="field">
-              {strings.barrierTypes.nameLabel}
-              <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={strings.barrierTypes.namePlaceholder} />
-            </label>
-            <div className="form__actions">
-              <button type="submit" disabled={saving}>
-                {strings.barrierTypes.addSubmit}
-              </button>
-            </div>
-          </form>
-        </div>
+        <form className="settings-add" onSubmit={handleCreate}>
+          <input
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={strings.barrierTypes.namePlaceholder}
+            aria-label={strings.barrierTypes.nameLabel}
+          />
+          <button type="submit" disabled={saving}>
+            {strings.barrierTypes.addSubmit}
+          </button>
+        </form>
       )}
-    </div>
+    </section>
   );
 }

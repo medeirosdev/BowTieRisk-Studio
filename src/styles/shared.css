@@ -128,9 +128,35 @@
   }
 
   .shell__header,
-  .status-bar {
+  .status-bar,
+  .notice-banner {
     display: none !important;
   }
+}
+
+/* Aviso geral do projeto, fixo abaixo da barra de status. */
+.notice-banner {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-6);
+  background: var(--color-warning-soft);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+}
+
+.notice-banner__text {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-line;
+  color: var(--color-text);
+}
+
+.notice-banner__meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
 }
 
 .screen {
@@ -666,4 +692,137 @@ button.list-item__main:hover {
   background: var(--color-surface);
   color: var(--color-text);
   box-shadow: var(--shadow-card);
+}
+
+/* ============ Categorias (ameaças/consequências) ============ */
+.category-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--category-color, var(--color-border));
+}
+
+.category-dot--empty {
+  background: transparent;
+  border: 1.5px dashed var(--color-text-muted);
+}
+
+.category-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.category-select select {
+  flex: 1;
+  min-width: 0;
+}
+
+.color-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.color-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+/* A cor vem inline (style), então o button:hover global não a sobrescreve —
+   só um leve realce aqui. */
+button.color-swatch:hover {
+  filter: brightness(1.1);
+}
+
+.color-swatch--active {
+  border-color: var(--color-surface);
+  outline: 2px solid var(--color-text);
+}
+
+.color-swatch:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* ============ Configurações do projeto ============ */
+.settings-screen {
+  max-width: 760px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.settings-section__hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.settings-section__meta {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.settings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-list__item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-list__item:last-child {
+  border-bottom: none;
+}
+
+.settings-list__label {
+  flex: 1;
+  min-width: 120px;
+  font-weight: 500;
+}
+
+.settings-add {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+
+.settings-add input {
+  flex: 1;
+  min-width: 180px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Caminho da pasta bancos/ na tela de projetos — discreto, mas selecionável
+   pra copiar. */
+.data-folder {
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  word-break: break-all;
+  user-select: text;
 }
