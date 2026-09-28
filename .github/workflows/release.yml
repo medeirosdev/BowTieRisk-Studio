@@ -1,11 +1,16 @@
 name: Release
 
-# Builda o app em Windows e Linux e publica os instaladores como uma Release
-# do GitHub. Dispara ao empurrar uma tag "v*" (ex.: v0.1.1), ou manualmente
-# pela aba Actions informando a tag.
+# Builda o app em Windows e Linux e publica como Release do GitHub (rascunho,
+# pra revisar antes de publicar). Dispara ao empurrar uma tag "v*" (ex.:
+# v0.1.1), ou manualmente pela aba Actions informando a tag.
 #
-# Antes de criar a tag, atualize "version" em src-tauri/tauri.conf.json pra
-# bater com ela — é esse valor que aparece no instalador gerado.
+# Publica a versão PORTÁTIL, não instaladores: o app guarda os projetos em
+# bancos/ e backups/ ao lado do executável (about.md, Seção 6.2) — é essa
+# pasta que vai pro SharePoint/OneDrive. Instalado em "Arquivos de
+# Programas", o app não teria permissão de escrita ali.
+#
+# Antes de criar a tag, atualize "version" em package.json pra bater com ela
+# (o tauri.conf.json lê a versão de lá). O job falha se não bater.
 on:
   push:
     tags:
@@ -19,16 +24,32 @@ on:
 permissions:
   contents: write
 
+env:
+  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
 jobs:
-  release:
+  build:
     strategy:
       fail-fast: false
       matrix:
-        platform: [windows-latest, ubuntu-latest]
+        include:
+          - platform: windows-latest
+            os: windows
+          - platform: ubuntu-22.04
+            os: linux
 
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Conferir versão x tag
+        shell: bash
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$version" != "$TAG" ]; then
+            echo "::error::package.json está em $version, mas a tag é $TAG"
+            exit 1
+          fi
 
       - name: Instalar Node
         uses: actions/setup-node@v4
@@ -45,7 +66,7 @@ jobs:
           workspaces: src-tauri
 
       - name: Dependências de sistema (Linux)
-        if: matrix.platform == 'ubuntu-latest'
+        if: matrix.os == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
@@ -54,12 +75,60 @@ jobs:
       - name: Instalar dependências do frontend
         run: npm ci
 
-      - name: Build e publicar release
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build (sem instalador)
+        run: npm run tauri build -- --no-bundle
+
+      # Nomes de arquivo SEM a versão: a página de download (site/) aponta
+      # para /releases/latest/download/<nome>, que só funciona com nome fixo.
+      - name: Montar pacote portátil (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $dir = "BTR-Studio"
+          New-Item -ItemType Directory -Force -Path "$dir/bancos", "$dir/backups" | Out-Null
+          Copy-Item "src-tauri/target/release/bowtie-studio.exe" "$dir/BTR-Studio.exe"
+          Copy-Item "packaging/LEIAME.txt" "$dir/LEIAME.txt"
+          # Pastas vazias não entram no zip — um arquivo marcador garante que
+          # a estrutura já venha pronta.
+          Set-Content "$dir/bancos/.manter" "Projetos (.db) ficam nesta pasta."
+          Set-Content "$dir/backups/.manter" "Backups automáticos ficam nesta pasta."
+          Compress-Archive -Path $dir -DestinationPath "BTR-Studio-windows-portatil.zip"
+
+      - name: Montar pacote portátil (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          dir=BTR-Studio
+          mkdir -p "$dir/bancos" "$dir/backups"
+          cp src-tauri/target/release/bowtie-studio "$dir/btr-studio"
+          chmod +x "$dir/btr-studio"
+          cp packaging/LEIAME.txt "$dir/LEIAME.txt"
+          echo "Projetos (.db) ficam nesta pasta." > "$dir/bancos/.manter"
+          echo "Backups automáticos ficam nesta pasta." > "$dir/backups/.manter"
+          tar -czf "BTR-Studio-linux-portatil.tar.gz" "$dir"
+
+      - uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.event.inputs.tag || github.ref_name }}
-          releaseName: "BTR Studio ${{ github.event.inputs.tag || github.ref_name }}"
-          releaseDraft: true
-          prerelease: false
+          name: pacote-${{ matrix.os }}
+          path: |
+            BTR-Studio-*.zip
+            BTR-Studio-*.tar.gz
+          if-no-files-found: error
+
+  # Um único job cria a release com os dois pacotes — dois jobs publicando em
+  # paralelo na mesma release (rascunho) podem acabar criando duas.
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: pacotes
+          merge-multiple: true
+
+      - name: Publicar release (rascunho)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: BTR Studio ${{ env.TAG }}
+          draft: true
+          files: pacotes/*

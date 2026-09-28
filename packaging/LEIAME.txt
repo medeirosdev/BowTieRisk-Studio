@@ -1,0 +1,33 @@
+BTR Studio (BowTieRisk Studio) - versão portátil
+================================================
+
+Não precisa instalar. Esta pasta inteira É o aplicativo:
+
+  BTR-Studio.exe (Windows) / btr-studio (Linux)   o programa
+  bancos/                                         os projetos (um arquivo .db por projeto)
+  backups/                                        cópias automáticas a cada sincronização
+
+Uso em equipe (SharePoint / OneDrive)
+-------------------------------------
+1. Coloque esta pasta inteira dentro de uma biblioteca do SharePoint (ou de
+   uma pasta compartilhada do OneDrive) e sincronize-a no computador de cada
+   pessoa.
+2. Cada pessoa abre o programa DE DENTRO da pasta sincronizada. Se o
+   programa for copiado para outro lugar, ele cria um bancos/ vazio ao lado
+   da cópia e os projetos "somem". A tela de projetos mostra qual pasta de
+   dados está em uso.
+3. Só uma pessoa edita um projeto por vez. Quem abrir depois entra em
+   "somente leitura" e vê o nome de quem está editando.
+4. Clique em "Sincronizar" de vez em quando. Ao sair do projeto ou fechar a
+   janela, o app sincroniza sozinho.
+
+Windows: na primeira execução, o SmartScreen pode avisar "o Windows protegeu
+o computador" (o executável não é assinado). Clique em "Mais informações" e
+depois em "Executar assim mesmo". O WebView2 já vem no Windows 11 e nas versões atualizadas do Windows 10.
+
+Linux: requer a biblioteca WebKitGTK 4.1 (pacote libwebkit2gtk-4.1-0 no
+Debian/Ubuntu). Para abrir: ./btr-studio
+
+Nada foi apagado? Os backups ficam em backups/. Edições que não puderam ser
+publicadas (por exemplo, outra pessoa assumiu o projeto) ficam em
+backups/nao-sincronizados/.
