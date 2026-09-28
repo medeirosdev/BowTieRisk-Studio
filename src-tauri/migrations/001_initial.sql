@@ -19,7 +19,13 @@ CREATE TABLE projects (
   created_by  TEXT NOT NULL,
   created_at  TEXT NOT NULL,
   updated_by  TEXT,
-  updated_at  TEXT
+  updated_at  TEXT,
+  -- Aviso geral do projeto, com autor e data (ex.: "não mexer no bowtie X").
+  -- No fim da tabela: projetos antigos ganham essas colunas via ALTER TABLE
+  -- ADD COLUMN (src/db/migrations.ts), que sempre adiciona no final.
+  notice      TEXT,
+  notice_by   TEXT,
+  notice_at   TEXT
 );
 
 CREATE TABLE sessions (
@@ -66,6 +72,22 @@ INSERT INTO barrier_types (id, label, order_index, created_by, created_at) VALUE
   ('humano_comportamental', 'Humano / Comportamental', 3, 'sistema', datetime('now')),
   ('hardware_continuo', 'Hardware Contínuo', 4, 'sistema', datetime('now'));
 
+-- ============ CATEGORIAS DE AMEAÇA / CONSEQUÊNCIA (personalizáveis) ============
+-- Uma lista separada por tipo (kind). Diferente de barrier_type, aqui a
+-- ameaça/consequência referencia a categoria por id (a cor mora na
+-- categoria); excluir uma categoria só limpa a referência (ON DELETE SET NULL).
+-- Cor = chave da paleta fixa do app (src/features/categories/palette.ts).
+-- Semeada na criação do projeto pelo app (categoryRepo.seedDefaultCategories).
+CREATE TABLE categories (
+  id          TEXT PRIMARY KEY,
+  kind        TEXT NOT NULL CHECK (kind IN ('threat', 'consequence')),
+  label       TEXT NOT NULL,
+  color       TEXT NOT NULL,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_by  TEXT NOT NULL, created_at TEXT NOT NULL,
+  UNIQUE (kind, label)
+);
+
 -- ============ LADO ESQUERDO ============
 CREATE TABLE threats (
   id          TEXT PRIMARY KEY,
@@ -74,7 +96,8 @@ CREATE TABLE threats (
   description TEXT,
   order_index INTEGER NOT NULL DEFAULT 0,
   created_by  TEXT NOT NULL, created_at TEXT NOT NULL,
-  updated_by  TEXT, updated_at TEXT
+  updated_by  TEXT, updated_at TEXT,
+  category_id TEXT REFERENCES categories(id) ON DELETE SET NULL
 );
 
 CREATE TABLE preventive_barriers (
@@ -98,7 +121,8 @@ CREATE TABLE consequences (
   description TEXT,
   order_index INTEGER NOT NULL DEFAULT 0,
   created_by  TEXT NOT NULL, created_at TEXT NOT NULL,
-  updated_by  TEXT, updated_at TEXT
+  updated_by  TEXT, updated_at TEXT,
+  category_id TEXT REFERENCES categories(id) ON DELETE SET NULL
 );
 
 CREATE TABLE mitigative_barriers (

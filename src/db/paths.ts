@@ -43,3 +43,14 @@ export async function getWorkingDir(): Promise<string> {
 export async function getLockPath(dbFile: string): Promise<string> {
   return join(await getBancosDir(), `${dbFile}.lock.json`);
 }
+
+// Estado da cópia de trabalho (src/db/workingCopy.ts): working/<id>.json.
+export async function getWorkingStatePath(projectId: string): Promise<string> {
+  return join(await getWorkingDir(), `${projectId}.json`);
+}
+
+// Cópias de trabalho com edições que não puderam ser publicadas (ex.: outra
+// pessoa assumiu o projeto antes do sync) — guardadas em vez de descartadas.
+export async function getUnsyncedDir(): Promise<string> {
+  return join(await getBackupsDir(), 'nao-sincronizados');
+}

@@ -3,14 +3,16 @@ import type { Consequence } from '../../types/domain';
 import { writeAudit } from '../audit';
 import { getDbAt } from '../client';
 import { newId } from '../ids';
+import { assertCategoryKind } from './categoryRepo';
 
 export async function listConsequences(dbPath: string, bowtieId: string): Promise<Consequence[]> {
   const db = await getDbAt(dbPath);
   return db.select<Consequence[]>('SELECT * FROM consequences WHERE bowtie_id = $1 ORDER BY order_index', [bowtieId]);
 }
 
-export async function createConsequence(dbPath: string, bowtieId: string, label: string, description: string | null, user: CurrentUser): Promise<Consequence> {
+export async function createConsequence(dbPath: string, bowtieId: string, label: string, description: string | null, categoryId: string | null, user: CurrentUser): Promise<Consequence> {
   const db = await getDbAt(dbPath);
+  await assertCategoryKind(db, categoryId, 'consequence');
   const [{ nextIndex }] = await db.select<{ nextIndex: number }[]>(
     'SELECT COALESCE(MAX(order_index) + 1, 0) as nextIndex FROM consequences WHERE bowtie_id = $1',
     [bowtieId],
@@ -19,8 +21,8 @@ export async function createConsequence(dbPath: string, bowtieId: string, label:
   const id = newId();
   const now = new Date().toISOString();
   await db.execute(
-    'INSERT INTO consequences (id, bowtie_id, label, description, order_index, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-    [id, bowtieId, label, description, nextIndex, user.name, now],
+    'INSERT INTO consequences (id, bowtie_id, label, description, category_id, order_index, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+    [id, bowtieId, label, description, categoryId, nextIndex, user.name, now],
   );
 
   const consequence: Consequence = {
@@ -28,6 +30,7 @@ export async function createConsequence(dbPath: string, bowtieId: string, label:
     bowtie_id: bowtieId,
     label,
     description,
+    category_id: categoryId,
     order_index: nextIndex,
     created_by: user.name,
     created_at: now,
@@ -38,12 +41,14 @@ export async function createConsequence(dbPath: string, bowtieId: string, label:
   return consequence;
 }
 
-export async function updateConsequence(dbPath: string, consequence: Consequence, label: string, description: string | null, user: CurrentUser): Promise<void> {
+export async function updateConsequence(dbPath: string, consequence: Consequence, label: string, description: string | null, categoryId: string | null, user: CurrentUser): Promise<void> {
   const db = await getDbAt(dbPath);
+  await assertCategoryKind(db, categoryId, 'consequence');
   const now = new Date().toISOString();
-  await db.execute('UPDATE consequences SET label = $1, description = $2, updated_by = $3, updated_at = $4 WHERE id = $5', [
+  await db.execute('UPDATE consequences SET label = $1, description = $2, category_id = $3, updated_by = $4, updated_at = $5 WHERE id = $6', [
     label,
     description,
+    categoryId,
     user.name,
     now,
     consequence.id,
@@ -54,13 +59,16 @@ export async function updateConsequence(dbPath: string, consequence: Consequence
     entityId: consequence.id,
     entityLabel: label,
     before: consequence,
-    after: { ...consequence, label, description },
+    after: { ...consequence, label, description, category_id: categoryId },
   });
 }
 
 export async function deleteConsequence(dbPath: string, consequence: Consequence, user: CurrentUser): Promise<void> {
   const db = await getDbAt(dbPath);
   await db.execute('DELETE FROM consequences WHERE id = $1', [consequence.id]);
+  // node_positions não tem FK pro item (node_id é um id lógico do nó
+  // derivado) — sem isso a posição salva ficaria órfã pra sempre.
+  await db.execute('DELETE FROM node_positions WHERE node_id = $1', ['consequence:' + consequence.id]);
   await writeAudit(db, user, { action: 'DELETE', entityType: 'consequence', entityId: consequence.id, entityLabel: consequence.label, before: consequence });
 }
 

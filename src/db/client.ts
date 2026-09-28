@@ -38,5 +38,8 @@ export async function closeDbAt(absolutePath: string): Promise<void> {
   if (!conn) return;
   connections.delete(absolutePath);
   const db = await conn;
-  await db.close();
+  // O nome do pool é obrigatório: sem argumento, o plugin fecha TODOS os
+  // pools abertos — inclusive os que continuam neste cache, que passariam a
+  // falhar com "attempted to acquire a connection on a closed pool".
+  await db.close(db.path);
 }

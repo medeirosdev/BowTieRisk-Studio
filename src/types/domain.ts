@@ -11,6 +11,24 @@ export interface Project extends AuditFields {
   id: string;
   name: string;
   description: string | null;
+  // Aviso geral do projeto (ex.: "não mexer no bowtie X, em revisão") —
+  // um só por projeto, com autor e data.
+  notice: string | null;
+  notice_by: string | null;
+  notice_at: string | null;
+}
+
+export type CategoryKind = 'threat' | 'consequence';
+
+// Categoria de ameaça ou consequência, personalizável por projeto. Uma lista
+// separada por tipo (kind); a cor é uma chave da paleta fixa
+// (features/categories/palette.ts).
+export interface Category {
+  id: string;
+  kind: CategoryKind;
+  label: string;
+  color: string;
+  order_index: number;
 }
 
 export interface Session extends AuditFields {
@@ -34,6 +52,7 @@ export interface Threat extends AuditFields {
   bowtie_id: string;
   label: string;
   description: string | null;
+  category_id: string | null;
   order_index: number;
 }
 
@@ -42,6 +61,7 @@ export interface Consequence extends AuditFields {
   bowtie_id: string;
   label: string;
   description: string | null;
+  category_id: string | null;
   order_index: number;
 }
 

@@ -1,6 +1,5 @@
-import { hostname } from '@tauri-apps/plugin-os';
 import { join } from '@tauri-apps/api/path';
-import { copyFile, exists, mkdir, readDir, remove, rename, stat } from '@tauri-apps/plugin-fs';
+import { copyFile, exists, mkdir, readDir, remove, rename } from '@tauri-apps/plugin-fs';
 import type Database from '@tauri-apps/plugin-sql';
 // Fonte única do schema: o mesmo SQL que roda como migration no Rust
 // (src-tauri/src/lib.rs) é aplicado aqui ao criar um banco por projeto,
@@ -10,12 +9,28 @@ import schemaSql from '../../../src-tauri/migrations/001_initial.sql?raw';
 import type { CurrentUser } from '../../store/currentUserStore';
 import type { Project } from '../../types/domain';
 import { writeAudit } from '../audit';
-import { ensureBarrierTypesSchema } from './barrierTypeRepo';
+import { seedDefaultCategories } from './categoryRepo';
+import { getProjectNotice } from './projectNoticeRepo';
+import type { ProjectNotice } from './projectNoticeRepo';
+import { LATEST_SCHEMA_VERSION, migrateProjectDb, setSchemaVersion } from '../migrations';
 import { closeDbAt, getDbAt } from '../client';
 import { appendProjectIndexEntry, ProjectIndexEntry, readProjectIndex, removeProjectIndexEntry, updateProjectIndexEntry } from '../indexFile';
 import { newId } from '../ids';
-import { isLockStale, isSameHolder, LockInfo, readLock, releaseLock, writeLock } from '../lockRepo';
+import {
+  activeForeignLock,
+  assertLockOwned,
+  getMachineName,
+  isLockStale,
+  isSameHolder,
+  LockInfo,
+  markClosing,
+  readLock,
+  releaseLockIfOwned,
+  unmarkClosing,
+  writeLock,
+} from '../lockRepo';
 import { getBackupsDir, getBancosDir, getWorkingDbPath, getWorkingDir } from '../paths';
+import { fileMtimeMs, readChangeCounter, recordCleanWorkingCopy, stashWorkingCopy, workingCopyStatus } from '../workingCopy';
 import { slugify } from '../slug';
 
 const MAX_BACKUPS_PER_PROJECT = 30;
@@ -31,6 +46,22 @@ export interface OpenProject {
   reclaimedStaleLockFrom: string | null; // nome de quem tinha o lock obsoleto reivindicado (about.md, Seção 6.3: "com aviso")
   openedCanonicalMtimeMs: number | null; // pra detectar divergência inesperada no sync
   lastSyncAt: string | null;
+  notice: ProjectNotice | null; // aviso geral do projeto, exibido em todas as telas dele
+  recovery: WorkingCopyRecovery | null; // o que aconteceu com edições não sincronizadas de uma sessão anterior
+}
+
+// Edições que ficaram só na cópia de trabalho numa sessão anterior (app
+// fechou sem sincronizar): 'resumed' = o canônico não mudou desde então e o
+// lock é nosso, então a cópia foi reaproveitada como está; 'stashed' = não
+// dava pra reaproveitar (outra pessoa editou/está editando), então foi
+// guardada em `path` antes de ser substituída pelo canônico.
+export type WorkingCopyRecovery = { kind: 'resumed' } | { kind: 'stashed'; path: string };
+
+export class ProjectLockedError extends Error {
+  constructor(public readonly holder: LockInfo) {
+    super(`Projeto em uso por ${holder.user_name}.`);
+    this.name = 'ProjectLockedError';
+  }
 }
 
 export async function listProjects(): Promise<ProjectIndexEntry[]> {
@@ -52,6 +83,19 @@ export async function getProject(dbPath: string, projectId: string): Promise<Pro
     throw new Error(`Projeto não encontrado: ${projectId}`);
   }
   return project;
+}
+
+// Leitura pontual do canônico pela lista de projetos (ex.: descrição pro
+// formulário de renomear) — fecha a conexão logo em seguida, pra não deixar
+// bancos/ aberto (about.md, Seção 6.4) nem uma conexão em cache que o
+// próximo sync/abertura reaproveitaria sobre um arquivo já substituído.
+export async function readProjectDetails(entry: ProjectIndexEntry): Promise<Project> {
+  const dbPath = await resolveProjectDbPath(entry);
+  try {
+    return await getProject(dbPath, entry.id);
+  } finally {
+    await closeDbAt(dbPath);
+  }
 }
 
 async function uniqueDbFileName(dir: string, base: string): Promise<string> {
@@ -80,35 +124,48 @@ async function touchProjectUser(db: Database, user: CurrentUser): Promise<void> 
   }
 }
 
-async function getMachineName(): Promise<string> {
-  try {
-    return (await hostname()) ?? 'desconhecido';
-  } catch {
-    return 'desconhecido';
-  }
-}
-
-async function canonicalMtimeMs(canonicalPath: string): Promise<number | null> {
-  try {
-    const info = await stat(canonicalPath);
-    return info.mtime ? info.mtime.getTime() : null;
-  } catch {
-    return null;
-  }
-}
-
-// Copia bancos/<projeto>.db -> cópia de trabalho local (about.md, Seção 6.3).
-// Fecha qualquer conexão antiga na cópia de trabalho antes de sobrescrever
-// o arquivo (Seção 6.4: nunca copiar com conexão aberta).
-async function refreshWorkingCopy(canonicalPath: string, projectId: string): Promise<string> {
+async function ensureWorkingDir(): Promise<void> {
   const workingDir = await getWorkingDir();
   if (!(await exists(workingDir))) {
     await mkdir(workingDir, { recursive: true });
   }
+}
+
+// Prepara a cópia de trabalho local a partir de bancos/<projeto>.db (about.md,
+// Seção 6.3). Fecha qualquer conexão antiga antes de mexer nos arquivos
+// (Seção 6.4: nunca copiar com conexão aberta) — inclusive no canônico, que
+// pode ter ficado com uma conexão em cache (ex.: leitura feita pela lista de
+// projetos).
+//
+// Se a cópia existente tem edições nunca sincronizadas (workingCopy.ts), ela
+// não é simplesmente sobrescrita: é reaproveitada quando dá (lock nosso e
+// canônico intacto desde que ela foi feita), senão guardada em
+// backups/nao-sincronizados/ antes da cópia nova.
+async function prepareWorkingCopy(
+  projectId: string,
+  dbFile: string,
+  canonicalPath: string,
+  canonicalCounter: number | null,
+  canClaim: boolean,
+): Promise<{ workingPath: string; recovery: WorkingCopyRecovery | null }> {
+  await ensureWorkingDir();
   const workingPath = await getWorkingDbPath(projectId);
   await closeDbAt(workingPath);
+  await closeDbAt(canonicalPath);
+
+  const status = await workingCopyStatus(projectId, workingPath);
+  if (status.dirty) {
+    const canonicalUnchanged = canonicalCounter !== null && status.baseCanonicalCounter === canonicalCounter;
+    if (canClaim && canonicalUnchanged) {
+      return { workingPath, recovery: { kind: 'resumed' } };
+    }
+    const path = await stashWorkingCopy(workingPath, dbFile);
+    await copyFile(canonicalPath, workingPath);
+    return { workingPath, recovery: { kind: 'stashed', path } };
+  }
+
   await copyFile(canonicalPath, workingPath);
-  return workingPath;
+  return { workingPath, recovery: null };
 }
 
 export async function createProject(name: string, description: string | null, user: CurrentUser): Promise<OpenProject> {
@@ -126,14 +183,14 @@ export async function createProject(name: string, description: string | null, us
   // seguida — assim a criação passa pelo mesmo caminho de sync/backup que
   // qualquer outra alteração.
   const workingPath = await getWorkingDbPath(id);
-  const workingDir = await getWorkingDir();
-  if (!(await exists(workingDir))) {
-    await mkdir(workingDir, { recursive: true });
-  }
+  await ensureWorkingDir();
   await closeDbAt(workingPath);
 
   const db = await getDbAt(workingPath);
   await db.execute(schemaSql);
+  await seedDefaultCategories(db, user);
+  // schemaSql já é o schema final — nenhuma migração precisa rodar num banco novo.
+  await setSchemaVersion(db, LATEST_SCHEMA_VERSION);
 
   const now = new Date().toISOString();
   await db.execute(
@@ -143,14 +200,18 @@ export async function createProject(name: string, description: string | null, us
   await touchProjectUser(db, user);
   await writeAudit(db, user, { action: 'CREATE', entityType: 'project', entityId: id, entityLabel: name });
 
-  await appendProjectIndexEntry({ id, name, db_file: dbFile, created_by: user.name, created_at: now });
-
+  unmarkClosing(dbFile);
   const machine = await getMachineName();
   await acquireLock(dbFile, user, machine);
 
   await closeDbAt(workingPath);
   await copyFile(workingPath, canonicalPath);
+  // Por último: só entra na lista depois que o arquivo existe em bancos/ —
+  // uma falha antes disso não deixa um item apontando pro nada.
+  await appendProjectIndexEntry({ id, name, db_file: dbFile, created_by: user.name, created_at: now });
   await getDbAt(workingPath); // reabre pra edição contínua
+  const openedCanonicalMtimeMs = await fileMtimeMs(canonicalPath);
+  await recordCleanWorkingCopy(id, workingPath, await readChangeCounter(canonicalPath));
 
   return {
     id,
@@ -161,8 +222,10 @@ export async function createProject(name: string, description: string | null, us
     readOnly: false,
     lockOwner: null,
     reclaimedStaleLockFrom: null,
-    openedCanonicalMtimeMs: await canonicalMtimeMs(canonicalPath),
+    openedCanonicalMtimeMs,
     lastSyncAt: now,
+    notice: null,
+    recovery: null,
   };
 }
 
@@ -184,12 +247,15 @@ export async function openProject(entry: ProjectIndexEntry, user: CurrentUser): 
   // Seção 6.3) — reclamar o próprio lock (mesmo usuário+máquina) não conta.
   const reclaimedStaleLockFrom = lock && stale && !sameHolder ? lock.user_name : null;
 
-  const workingPath = await refreshWorkingCopy(canonicalPath, entry.id);
+  unmarkClosing(entry.db_file);
+  const canonicalMtime = await fileMtimeMs(canonicalPath);
+  const canonicalCounter = await readChangeCounter(canonicalPath);
+  const { workingPath, recovery } = await prepareWorkingCopy(entry.id, entry.db_file, canonicalPath, canonicalCounter, canClaim);
   const db = await getDbAt(workingPath);
-  // Projetos criados antes da tela "Tipos de Barreira" não têm a tabela
-  // barrier_types nem o CHECK antigo removido — idempotente, seguro rodar em
-  // toda abertura (inclusive somente leitura: só afeta a cópia de trabalho local).
-  await ensureBarrierTypesSchema(db, user);
+  // Traz bancos criados por versões anteriores do app pro schema atual. Roda
+  // inclusive em somente leitura: só afeta a cópia de trabalho local, que
+  // nunca volta pro canônico nesse modo.
+  await migrateProjectDb(db, user);
 
   if (canClaim) {
     await acquireLock(entry.db_file, user, machine);
@@ -197,6 +263,11 @@ export async function openProject(entry: ProjectIndexEntry, user: CurrentUser): 
     await writeAudit(db, user, { action: 'LOCK', entityType: 'project', entityId: entry.id, entityLabel: entry.name });
   }
   await writeAudit(db, user, { action: 'OPEN', entityType: 'project', entityId: entry.id, entityLabel: entry.name });
+  // Cópia reaproveitada continua "suja" até o próximo sync — só marca como
+  // limpa a que acabou de vir do canônico.
+  if (recovery?.kind !== 'resumed') {
+    await recordCleanWorkingCopy(entry.id, workingPath, canonicalCounter);
+  }
 
   return {
     id: entry.id,
@@ -207,8 +278,10 @@ export async function openProject(entry: ProjectIndexEntry, user: CurrentUser): 
     readOnly: !canClaim,
     lockOwner: canClaim ? null : lock,
     reclaimedStaleLockFrom,
-    openedCanonicalMtimeMs: await canonicalMtimeMs(canonicalPath),
+    openedCanonicalMtimeMs: canonicalMtime,
     lastSyncAt: null,
+    notice: await getProjectNotice(workingPath, entry.id),
+    recovery,
   };
 }
 
@@ -226,12 +299,18 @@ export async function syncProject(open: OpenProject, user: CurrentUser): Promise
     throw new Error('Projeto aberto em somente leitura — não é possível sincronizar.');
   }
 
+  // Se outra pessoa reivindicou o projeto (nosso lock ficou obsoleto, ex.:
+  // notebook dormiu), publicar agora apagaria o trabalho dela. As edições
+  // continuam na cópia de trabalho e são guardadas na próxima abertura.
+  await assertLockOwned(open.dbFile, user);
+
   const conflict = await hasExternalChange(open);
 
   const db = await getDbAt(open.dbPath);
   await writeAudit(db, user, { action: 'SYNC', entityType: 'project', entityId: open.id, entityLabel: open.name });
 
   await closeDbAt(open.dbPath);
+  await closeDbAt(open.canonicalPath);
 
   const dir = await getBancosDir();
   // Sem ponto inicial: alguns matchers de escopo do Tauri (glob) não casam
@@ -249,10 +328,12 @@ export async function syncProject(open: OpenProject, user: CurrentUser): Promise
   await acquireLock(open.dbFile, user, machine);
 
   await getDbAt(open.dbPath); // reabre a cópia de trabalho pra continuar editando
+  const canonicalMtime = await fileMtimeMs(open.canonicalPath);
+  await recordCleanWorkingCopy(open.id, open.dbPath, await readChangeCounter(open.canonicalPath));
 
   const syncedAt = new Date().toISOString();
   return {
-    project: { ...open, lastSyncAt: syncedAt, openedCanonicalMtimeMs: await canonicalMtimeMs(open.canonicalPath) },
+    project: { ...open, lastSyncAt: syncedAt, openedCanonicalMtimeMs: canonicalMtime },
     conflict,
     integrityOk,
   };
@@ -260,7 +341,7 @@ export async function syncProject(open: OpenProject, user: CurrentUser): Promise
 
 async function hasExternalChange(open: OpenProject): Promise<boolean> {
   if (open.openedCanonicalMtimeMs === null) return false;
-  const current = await canonicalMtimeMs(open.canonicalPath);
+  const current = await fileMtimeMs(open.canonicalPath);
   return current !== null && current !== open.openedCanonicalMtimeMs;
 }
 
@@ -310,22 +391,40 @@ async function rotateBackups(backupsDir: string, baseName: string): Promise<void
   }
 }
 
-// Fecha o projeto: sincroniza (se não for somente leitura), libera o lock e
-// registra CLOSE (about.md, Seção 6.3, passo 4).
+// Fecha o projeto: registra UNLOCK/CLOSE, sincroniza (se não for somente
+// leitura) e libera o lock (about.md, Seção 6.3, passo 4). Os registros vêm
+// ANTES do sync pra irem junto pro canônico — gravados depois, ficariam só
+// na cópia de trabalho e se perderiam na próxima abertura.
 //
-// Importante: se o sync falhar, NÃO libera o lock nem fecha a conexão — a
-// próxima abertura sempre sobrescreve a cópia de trabalho a partir do
-// canônico (refreshWorkingCopy), então liberar o lock aqui apagaria
-// silenciosamente qualquer edição ainda não publicada. Deixa o erro
-// propagar pra quem chamou decidir (ex.: não navegar pra longe do projeto).
+// Se o sync falhar, NÃO libera o lock nem fecha a conexão — deixa o erro
+// propagar pra quem chamou decidir (tentar de novo, ou abandonar com
+// abandonProject; as edições ficam na cópia de trabalho e são recuperadas na
+// próxima abertura, ver prepareWorkingCopy).
 export async function closeProject(open: OpenProject, user: CurrentUser): Promise<void> {
   if (!open.readOnly) {
-    await syncProject(open, user);
-    await releaseLock(open.dbFile);
     const db = await getDbAt(open.dbPath);
     await writeAudit(db, user, { action: 'UNLOCK', entityType: 'project', entityId: open.id, entityLabel: open.name });
     await writeAudit(db, user, { action: 'CLOSE', entityType: 'project', entityId: open.id, entityLabel: open.name });
+    // Impede o heartbeat em andamento de recriar o lock logo depois de
+    // liberado. Continua marcado até a próxima abertura deste projeto.
+    markClosing(open.dbFile);
+    try {
+      await syncProject(open, user);
+    } catch (err) {
+      unmarkClosing(open.dbFile);
+      throw err;
+    }
+    await releaseLockIfOwned(open.dbFile, user);
   }
+  await closeDbAt(open.dbPath);
+}
+
+// Sai do projeto sem sincronizar (o sync falhou e o usuário escolheu sair
+// mesmo assim). O lock não é liberado: fica obsoleto sozinho em alguns
+// minutos, e até lá ninguém pega o projeto numa versão sem as edições
+// pendentes. Elas continuam na cópia de trabalho local.
+export async function abandonProject(open: OpenProject): Promise<void> {
+  markClosing(open.dbFile);
   await closeDbAt(open.dbPath);
 }
 
@@ -334,7 +433,14 @@ export async function closeProject(open: OpenProject, user: CurrentUser): Promis
 // (about.md, Seção 6.4: nunca deixar bancos/ aberto). Não passa pelo
 // fluxo completo de cópia de trabalho porque não há edição de domínio
 // sustentada aqui, só um metadado pontual.
-export async function renameProject(dbPath: string, projectId: string, newName: string, description: string | null, user: CurrentUser): Promise<void> {
+//
+// Recusa se outra pessoa estiver com o projeto aberto: o próximo sync dela
+// sobrescreveria o canônico e desfaria a alteração.
+export async function renameProject(entry: ProjectIndexEntry, newName: string, description: string | null, user: CurrentUser): Promise<void> {
+  const holder = await activeForeignLock(entry.db_file, user);
+  if (holder) throw new ProjectLockedError(holder);
+  const projectId = entry.id;
+  const dbPath = await resolveProjectDbPath(entry);
   const db = await getDbAt(dbPath);
   try {
     const [before] = await db.select<Project[]>('SELECT * FROM projects WHERE id = $1', [projectId]);
@@ -363,6 +469,8 @@ export async function renameProject(dbPath: string, projectId: string, newName: 
 }
 
 export async function deleteProject(entry: ProjectIndexEntry, user: CurrentUser): Promise<void> {
+  const holder = await activeForeignLock(entry.db_file, user);
+  if (holder) throw new ProjectLockedError(holder);
   const dir = await getBancosDir();
   const dbPath = await join(dir, entry.db_file);
   const db = await getDbAt(dbPath);

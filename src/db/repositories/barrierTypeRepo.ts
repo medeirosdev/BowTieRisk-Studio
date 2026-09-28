@@ -25,7 +25,9 @@ const DEFAULT_BARRIER_TYPES: readonly [string, string][] = [
 // CHECK antigo removido de preventive/mitigative_barriers — não há sistema de
 // migration incremental (about.md, Seção 6.6: schema só roda uma vez, na
 // criação), então este passo idempotente cobre quem abre um projeto antigo.
-// Chamado sempre em openProject; é barato (poucos SELECTs) quando já migrado.
+// Roda como migração v1 (src/db/migrations.ts); idempotente porque bancos que
+// passaram pela versão antiga desta rotina (antes do user_version) também
+// chegam aqui com user_version 0.
 export async function ensureBarrierTypesSchema(db: Database, user: CurrentUser): Promise<void> {
   await db.execute(
     `CREATE TABLE IF NOT EXISTS barrier_types (

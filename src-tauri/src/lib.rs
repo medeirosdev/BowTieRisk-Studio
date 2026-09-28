@@ -34,6 +34,17 @@ pub fn run() {
     // (src/db/repositories/projectRepo.ts), via import `?raw` do mesmo
     // arquivo — única fonte de verdade do schema.
     tauri::Builder::default()
+        // Precisa ser o primeiro plugin. Duas janelas do app abrindo o mesmo
+        // projeto dividiriam a mesma cópia de trabalho e o mesmo lock (mesmo
+        // usuário + máquina = "mesmo dono"), e o sync de uma sobrescreveria o
+        // da outra. Uma segunda execução só traz a janela existente pra frente.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_os::init())

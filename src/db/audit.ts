@@ -3,7 +3,7 @@ import type { CurrentUser } from '../store/currentUserStore';
 import type { AuditAction } from '../types/enums';
 import { newId } from './ids';
 
-const APP_VERSION = '0.1.0';
+const APP_VERSION = __APP_VERSION__;
 
 interface AuditParams {
   action: AuditAction;

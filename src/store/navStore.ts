@@ -10,7 +10,7 @@ export type NavView =
   | { screen: 'bowties'; sessionId: string; sessionName: string }
   | { screen: 'editor'; sessionId: string; sessionName: string; bowtieId: string; bowtieName: string }
   | { screen: 'audit'; returnTo: Exclude<NavView, { screen: 'audit' }> }
-  | { screen: 'barrierTypes'; returnTo: Exclude<NavView, { screen: 'barrierTypes' }> };
+  | { screen: 'settings'; returnTo: Exclude<NavView, { screen: 'settings' }> };
 
 interface NavState {
   view: NavView;
@@ -20,8 +20,8 @@ interface NavState {
   goToEditor: (sessionId: string, sessionName: string, bowtieId: string, bowtieName: string) => void;
   goToAudit: () => void;
   goBackFromAudit: () => void;
-  goToBarrierTypes: () => void;
-  goBackFromBarrierTypes: () => void;
+  goToSettings: () => void;
+  goBackFromSettings: () => void;
 }
 
 export const useNavStore = create<NavState>((set, get) => ({
@@ -41,14 +41,14 @@ export const useNavStore = create<NavState>((set, get) => ({
     if (current.screen !== 'audit') return;
     set({ view: current.returnTo });
   },
-  goToBarrierTypes: () => {
+  goToSettings: () => {
     const current = get().view;
-    if (current.screen === 'barrierTypes') return;
-    set({ view: { screen: 'barrierTypes', returnTo: current } });
+    if (current.screen === 'settings') return;
+    set({ view: { screen: 'settings', returnTo: current } });
   },
-  goBackFromBarrierTypes: () => {
+  goBackFromSettings: () => {
     const current = get().view;
-    if (current.screen !== 'barrierTypes') return;
+    if (current.screen !== 'settings') return;
     set({ view: current.returnTo });
   },
 }));

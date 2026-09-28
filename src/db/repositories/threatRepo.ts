@@ -3,14 +3,16 @@ import type { Threat } from '../../types/domain';
 import { writeAudit } from '../audit';
 import { getDbAt } from '../client';
 import { newId } from '../ids';
+import { assertCategoryKind } from './categoryRepo';
 
 export async function listThreats(dbPath: string, bowtieId: string): Promise<Threat[]> {
   const db = await getDbAt(dbPath);
   return db.select<Threat[]>('SELECT * FROM threats WHERE bowtie_id = $1 ORDER BY order_index', [bowtieId]);
 }
 
-export async function createThreat(dbPath: string, bowtieId: string, label: string, description: string | null, user: CurrentUser): Promise<Threat> {
+export async function createThreat(dbPath: string, bowtieId: string, label: string, description: string | null, categoryId: string | null, user: CurrentUser): Promise<Threat> {
   const db = await getDbAt(dbPath);
+  await assertCategoryKind(db, categoryId, 'threat');
   const [{ nextIndex }] = await db.select<{ nextIndex: number }[]>(
     'SELECT COALESCE(MAX(order_index) + 1, 0) as nextIndex FROM threats WHERE bowtie_id = $1',
     [bowtieId],
@@ -19,8 +21,8 @@ export async function createThreat(dbPath: string, bowtieId: string, label: stri
   const id = newId();
   const now = new Date().toISOString();
   await db.execute(
-    'INSERT INTO threats (id, bowtie_id, label, description, order_index, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-    [id, bowtieId, label, description, nextIndex, user.name, now],
+    'INSERT INTO threats (id, bowtie_id, label, description, category_id, order_index, created_by, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+    [id, bowtieId, label, description, categoryId, nextIndex, user.name, now],
   );
 
   const threat: Threat = {
@@ -28,6 +30,7 @@ export async function createThreat(dbPath: string, bowtieId: string, label: stri
     bowtie_id: bowtieId,
     label,
     description,
+    category_id: categoryId,
     order_index: nextIndex,
     created_by: user.name,
     created_at: now,
@@ -38,12 +41,14 @@ export async function createThreat(dbPath: string, bowtieId: string, label: stri
   return threat;
 }
 
-export async function updateThreat(dbPath: string, threat: Threat, label: string, description: string | null, user: CurrentUser): Promise<void> {
+export async function updateThreat(dbPath: string, threat: Threat, label: string, description: string | null, categoryId: string | null, user: CurrentUser): Promise<void> {
   const db = await getDbAt(dbPath);
+  await assertCategoryKind(db, categoryId, 'threat');
   const now = new Date().toISOString();
-  await db.execute('UPDATE threats SET label = $1, description = $2, updated_by = $3, updated_at = $4 WHERE id = $5', [
+  await db.execute('UPDATE threats SET label = $1, description = $2, category_id = $3, updated_by = $4, updated_at = $5 WHERE id = $6', [
     label,
     description,
+    categoryId,
     user.name,
     now,
     threat.id,
@@ -54,13 +59,16 @@ export async function updateThreat(dbPath: string, threat: Threat, label: string
     entityId: threat.id,
     entityLabel: label,
     before: threat,
-    after: { ...threat, label, description },
+    after: { ...threat, label, description, category_id: categoryId },
   });
 }
 
 export async function deleteThreat(dbPath: string, threat: Threat, user: CurrentUser): Promise<void> {
   const db = await getDbAt(dbPath);
   await db.execute('DELETE FROM threats WHERE id = $1', [threat.id]);
+  // node_positions não tem FK pro item (node_id é um id lógico do nó
+  // derivado) — sem isso a posição salva ficaria órfã pra sempre.
+  await db.execute('DELETE FROM node_positions WHERE node_id = $1', ['threat:' + threat.id]);
   await writeAudit(db, user, { action: 'DELETE', entityType: 'threat', entityId: threat.id, entityLabel: threat.label, before: threat });
 }
 
