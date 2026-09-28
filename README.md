@@ -12,6 +12,8 @@ Aplicação desktop, local e offline-first, para construir e gerenciar análises
 ![SQLite](https://img.shields.io/badge/SQLite-local--first-07405E?logo=sqlite&logoColor=white)
 ![Platform](https://img.shields.io/badge/plataforma-Windows%20%7C%20Linux-lightgrey)
 
+**[Baixar o BTR Studio](https://medeirosdev.github.io/BowTieRisk-Studio/)** · versão portátil para Windows e Linux, com manual rápido
+
 Ver [about.md](about.md) para a especificação completa do produto e o roadmap por fases.
 
 </div>
@@ -37,9 +39,11 @@ Ver [about.md](about.md) para a especificação completa do produto e o roadmap 
 - Hierarquia Projeto → Sessão → Bowtie, cada projeto salvo em um arquivo SQLite próprio.
 - Canvas visual do bowtie (React Flow): layout determinístico por colunas, nós customizados por tipo, reordenar barreiras arrastando.
 - Exportação do bowtie em PNG, relatório em Markdown ou impressão/"Salvar como PDF" pelo diálogo nativo do sistema.
-- Barreiras com nome, descrição livre, tipo e efetividade — o tipo é personalizável por projeto (taxonomia CCPS/DNV-GL de 5 tipos como ponto de partida, editável numa tela própria), e a efetividade usa uma escala numérica de 1 a 5.
+- Barreiras com nome, descrição livre, tipo e efetividade — o tipo é personalizável por projeto (taxonomia CCPS/DNV-GL de 5 tipos como ponto de partida, editável em Configurações do projeto), e a efetividade usa uma escala numérica de 1 a 5.
+- Categorias de ameaças e consequências (listas separadas, personalizáveis por projeto, com cor) e filtro no canvas que esmaece as categorias ocultas.
+- Aviso geral por projeto (ex.: "não alterar até a revisão"), exibido para toda a equipe com o nome de quem escreveu.
 - Auditoria completa: toda criação, edição e exclusão é registrada com autor e data; tela de Histórico com filtros por usuário, entidade, ação e período, resumo por ação/usuário/dia e exportação em CSV.
-- Sincronização segura para pastas compartilhadas (ex.: SharePoint/OneDrive): cópia de trabalho local, lock com heartbeat, backups automáticos rotacionados e checagem de integridade a cada sincronização.
+- Sincronização segura para pastas compartilhadas (ex.: SharePoint/OneDrive): cópia de trabalho local, lock com heartbeat, backups automáticos rotacionados, checagem de integridade a cada sincronização e recuperação de edições não sincronizadas após uma queda. Detalhes em [sincronizacao.md](sincronizacao.md).
 - Identificação por nome e email (atribuição, não autenticação), tema claro/escuro/sistema e textos de interface centralizados em português.
 
 ## Stack
@@ -134,6 +138,16 @@ npm run tauri build
 ```
 
 Gera o executável e os instaladores para a plataforma em que o build é executado — não há cross-compilação automática entre plataformas (build no Windows gera `.exe`/instalador Windows, build no Linux gera `.deb`/`.rpm`/`.AppImage`, build no macOS gera `.app`/`.dmg`). Os artefatos ficam em `src-tauri/target/release/bundle/`.
+
+Para uso real, prefira o executável puro (`npm run tauri build -- --no-bundle`, em `src-tauri/target/release/`) numa pasta gravável: o app guarda `bancos/` e `backups/` ao lado dele, o que não funciona quando instalado em "Arquivos de Programas" ou `/usr/bin`.
+
+### Publicando uma versão
+
+1. Atualize `version` no `package.json` (o `tauri.conf.json` lê dali).
+2. Crie e envie a tag correspondente: `git tag v0.2.0 && git push origin v0.2.0`.
+3. O workflow **Release** compila Windows e Linux e cria um rascunho de release com `BTR-Studio-windows-portatil.zip` e `BTR-Studio-linux-portatil.tar.gz`. Revise e publique pelo GitHub.
+
+A página de download (`site/`) é publicada no GitHub Pages pelo workflow **Página de download** e aponta sempre para a release mais recente. Para ativar, uma vez: Settings → Pages → Source: "GitHub Actions".
 
 ## Autor
 

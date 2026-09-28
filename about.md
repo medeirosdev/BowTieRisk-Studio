@@ -616,7 +616,7 @@ Não esquecer:
 - ✅ Pastas `bancos/` e `backups/` na **raiz do executável** (sincronizadas pelo SharePoint).
 - ✅ **Email obrigatório** (junto do nome).
 - ✅ **Sem autenticação** por enquanto.
-- ✅ **Export só PNG** por enquanto.
+- ✅ **Export**: PNG do canvas, relatório em Markdown e impressão/"Salvar como PDF" (sempre pelo diálogo nativo "Salvar como" — `<a download>` não funciona no WebView do Tauri).
 - ✅ **Sem i18n** (só PT-BR), mas textos centralizados.
 - ✅ **Sempre ENUM** (via `CHECK` + union types) — exceto `barrier_type` (ver abaixo).
 - ✅ **`barrier_type` = personalizável por projeto** (tabela `barrier_types`, texto livre, sem `CHECK`), semeado na criação com a taxonomia canônica CCPS (5 tipos, princípio Detectar–Decidir–Agir): `hardware_passivo`, `hardware_ativo`, `hardware_ativo_humano`, `humano_comportamental`, `hardware_continuo` (ver 5.1). Decisão revista — era ENUM fixo até a Fase 3.
@@ -625,6 +625,9 @@ Não esquecer:
 - ✅ **`effectiveness` = escala numérica 1–5** (1 = muito baixa, 5 = muito alta), `NULL` = não avaliada. Substitui a proposta original de string (`alta|media|baixa|nao_avaliada`). Ver `src/types/enums.ts` (`EFFECTIVENESS_SCALE`, `EFFECTIVENESS_LABELS`).
 - ✅ **Backups: manter os últimos 30 por projeto** (proposta original confirmada).
 - ✅ **Planos de ação já previstos no schema desde a v1** (não só na fase 3): tabela `action_plans`, referenciando a barreira de forma polimórfica via `(barrier_kind, barrier_id)` — já que `preventive_barriers` e `mitigative_barriers` são tabelas separadas. UI/fluxo de uso continuam fora do MVP; só o modelo de dados já existe.
+- ✅ **Categorias de ameaça e de consequência** (listas separadas, personalizáveis por projeto — tabela `categories` com `kind`), cada uma com cor de uma paleta fixa de 8 tons (`src/features/categories/palette.ts`, o banco guarda só a chave). Ameaças/consequências referenciam por `category_id` com `ON DELETE SET NULL`. Padrões na criação: ameaças Pessoas/Resíduos/Equipamento; consequências Pessoas/Meio ambiente/Patrimônio. No canvas, filtro por categoria deixa as desmarcadas **transparentes** (não somem). Só ameaças/consequências — barreiras não têm categoria.
+- ✅ **Aviso geral por projeto** (colunas `notice`/`notice_by`/`notice_at` em `projects`): um só por projeto, com autor e data, exibido numa faixa em todas as telas do projeto. Viaja com o `.db` como qualquer alteração.
+- ✅ **Evolução de schema via `PRAGMA user_version`** (`src/db/migrations.ts`): o schema completo só roda na criação; bancos existentes são migrados ao abrir, cada passo uma única vez. Colunas novas sempre no **fim** da tabela em `001_initial.sql`, pra bater com o `ALTER TABLE ADD COLUMN` dos bancos migrados.
 
 ### A confirmar
 *(nenhuma pendência no momento)*
