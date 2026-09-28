@@ -1,8 +1,9 @@
 name: Release
 
-# Builda o app em Windows e Linux e publica como Release do GitHub (rascunho,
-# pra revisar antes de publicar). Dispara ao empurrar uma tag "v*" (ex.:
-# v0.1.1), ou manualmente pela aba Actions informando a tag.
+# Builda o app em Windows e Linux e publica como Release do GitHub. Dispara
+# ao empurrar uma tag "v*" (ex.: v0.1.1), ou manualmente pela aba Actions
+# informando a tag. Se a release da tag já existir (ex.: criada pelo site do
+# GitHub), os pacotes são anexados a ela, mantendo o estado dela.
 #
 # Publica a versão PORTÁTIL, não instaladores: o app guarda os projetos em
 # bancos/ e backups/ ao lado do executável (about.md, Seção 6.2) — é essa
@@ -125,10 +126,11 @@ jobs:
           path: pacotes
           merge-multiple: true
 
-      - name: Publicar release (rascunho)
+      # Sem "draft": com ele, uma release já publicada voltaria a rascunho e a
+      # página de download (que usa /releases/latest) apontaria pra anterior.
+      - name: Publicar release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           name: BTR Studio ${{ env.TAG }}
-          draft: true
           files: pacotes/*

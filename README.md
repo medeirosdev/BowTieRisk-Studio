@@ -145,7 +145,7 @@ Para uso real, prefira o executável puro (`npm run tauri build -- --no-bundle`,
 
 1. Atualize `version` no `package.json` (o `tauri.conf.json` lê dali).
 2. Crie e envie a tag correspondente: `git tag v0.2.0 && git push origin v0.2.0`.
-3. O workflow **Release** compila Windows e Linux e cria um rascunho de release com `BTR-Studio-windows-portatil.zip` e `BTR-Studio-linux-portatil.tar.gz`. Revise e publique pelo GitHub.
+3. O workflow **Release** compila Windows e Linux e publica a release com `BTR-Studio-windows-portatil.zip` e `BTR-Studio-linux-portatil.tar.gz` (se a release da tag já existir, os pacotes são anexados a ela). O workflow falha se a versão do `package.json` não bater com a tag.
 
 A página de download (`site/`) é publicada no GitHub Pages pelo workflow **Página de download** e aponta sempre para a release mais recente. Para ativar, uma vez: Settings → Pages → Source: "GitHub Actions".
 
