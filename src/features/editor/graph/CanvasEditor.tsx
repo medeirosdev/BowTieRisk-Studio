@@ -34,7 +34,7 @@ import type { BowtieGraphData } from './deriveGraph';
 import { computeLayout } from './layout';
 import { minimapNodeColor } from './nodeColors';
 import { nodeTypes } from './nodeTypes';
-import { dimmedNodeIds } from './categoryFilter';
+import { dimmedNodeIds } from './categoryDimming';
 import { CategoryFilter } from './CategoryFilter';
 import { bowtieToMarkdown } from './exportMarkdown';
 import { PrintReport } from './PrintReport';

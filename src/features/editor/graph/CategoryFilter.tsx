@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { strings } from '../../../i18n/strings.pt-BR';
 import type { Category, CategoryKind } from '../../../types/domain';
 import { categoryColorHex } from '../../categories/palette';
-import { filterKey, uncategorizedKey } from './categoryFilter';
+import { filterKey, uncategorizedKey } from './categoryDimming';
 
 interface CategoryFilterProps {
   categories: Category[];
