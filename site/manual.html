@@ -66,7 +66,7 @@
     }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    img { max-width: 100%; display: block; }
+    img { max-width: 100%; height: auto; display: block; }
     code, kbd {
       font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 0.86em;
       background: var(--surface-muted); border: 1px solid var(--border); border-radius: 5px;
@@ -243,6 +243,47 @@
     footer .in { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
     footer a { color: var(--text); }
     .back-top { display: inline-block; margin-top: 28px; font-size: 0.9rem; }
+
+    /* ---------- Impressão / PDF ---------- */
+    @page { size: A4; margin: 16mm 15mm 18mm; }
+    @media print {
+      :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
+        --bg: #ffffff; --surface: #ffffff; --surface-muted: #f1f3f6; --border: #d6dbe3;
+        --text: #172033; --muted: #4f5968;
+        --accent: #1f4e9c; --accent-soft: #e6ecf9; --accent-contrast: #fff;
+        --warning: #8a5f08; --warning-soft: #f7edd8; --danger: #b03d26; --danger-soft: #f7e4df;
+        --success: #2e7d53; --success-soft: #e2f0e7; --node-threat: #c0432a; --node-cons: #9a6b0c;
+        --shadow: none; color-scheme: light;
+      }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-size: 10.5pt; line-height: 1.55; background: #fff; }
+      .nav, .toc, .mobile-toc, .quick, .back-top, .theme-btn, .pdf-link { display: none !important; }
+      .intro { background: none; border-bottom: 2px solid var(--accent); }
+      .intro__inner { padding: 0 0 14pt; }
+      .intro h1 { font-size: 26pt; }
+      .layout { display: block; padding: 0; }
+      main { padding: 0; }
+      .chapter { padding-top: 0; break-before: page; }
+      .chapter#visao-geral { break-before: auto; margin-top: 18pt; }
+      .chapter + .chapter { border-top: none; margin-top: 0; }
+      h2 { font-size: 19pt; }
+      h3 { font-size: 13pt; margin-top: 18pt; break-after: avoid; }
+      h4 { break-after: avoid; }
+      main p, main li, .steps > li, .callout, .tree { max-width: none; }
+      .card, .callout, .tree, .figure, .table-wrap, tr, .steps > li, .faq details, .scale { break-inside: avoid; }
+      .figure { max-width: 100%; }
+      .figure--narrow { max-width: 46%; }
+      .figure--shot { max-width: 88%; }
+      .figure--scroll { overflow: visible; }
+      .figure--scroll svg { min-width: 0; }
+      .figure img, .figure svg.frame { box-shadow: none; }
+      .table-wrap { overflow: visible; }
+      .faq summary::after { display: none; }
+      .faq details > div { display: block !important; }
+      a { color: var(--accent); }
+      footer { border-top: 1px solid var(--border); margin-top: 24pt; padding: 10pt 0 0; }
+      footer .in { padding: 0; }
+    }
   </style>
 </head>
 <body>
@@ -271,6 +312,7 @@
         <a href="#editor"><b>05</b> Usar o editor</a>
         <a href="#equipe"><b>07</b> Trabalhar em equipe</a>
         <a href="#problemas"><b>11</b> Resolver problemas</a>
+        <a class="pdf-link" href="BTR-Studio-Manual.pdf" download><b>PDF</b> Baixar o manual em PDF</a>
       </div>
     </div>
   </header>
@@ -504,7 +546,7 @@
         <span class="chapter__num">05</span>
         <h2>O editor do diagrama</h2>
         <p class="lead">O editor mostra o bowtie inteiro num canvas interativo. Ameaças e barreiras preventivas ficam à esquerda; consequências e barreiras mitigatórias, à direita. Clique em qualquer item para editá-lo no painel lateral.</p>
-        <figure class="figure">
+        <figure class="figure figure--shot">
           <img src="img/Diagrama.png" alt="Editor do BTR Studio mostrando um diagrama com ameaças, barreiras, evento de topo e consequências" width="1434" height="920" loading="lazy">
           <figcaption>O editor, com a barra de ferramentas no topo, o canvas no centro e o painel lateral à direita.</figcaption>
         </figure>
@@ -747,7 +789,7 @@
           <div><p>É de propósito: o app roda uma instância só por computador, para evitar que duas janelas editem o mesmo projeto. Abrir de novo apenas traz a janela existente para a frente.</p></div>
         </details>
         <details>
-          <summary>Vejo arquivos <code>.lock.json</code> e <code>.tmp</code> na pasta <code>bancos/</code></summary>
+          <summary><span>Vejo arquivos <code>.lock.json</code> e <code>.tmp</code> na pasta <code>bancos/</code></span></summary>
           <div><p>São arquivos de controle do app: o <code>.lock.json</code> indica quem está editando o projeto, e os temporários aparecem por instantes durante a sincronização. Não apague nem edite esses arquivos com o app aberto.</p></div>
         </details>
         <details>
@@ -830,6 +872,18 @@
         var next = current === 'dark' ? 'light' : 'dark';
         root.setAttribute('data-theme', next);
         try { localStorage.setItem('btr-theme', next); } catch (e) {}
+      });
+    })();
+
+    // Ao imprimir, abre todas as respostas das dúvidas frequentes.
+    (function () {
+      var opened = [];
+      window.addEventListener('beforeprint', function () {
+        document.querySelectorAll('details:not([open])').forEach(function (d) { d.open = true; opened.push(d); });
+      });
+      window.addEventListener('afterprint', function () {
+        opened.forEach(function (d) { d.open = false; });
+        opened = [];
       });
     })();
 
