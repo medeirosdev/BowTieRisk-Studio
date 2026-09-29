@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manual do BTR Studio</title>
+  <meta name="description" content="Manual completo do BTR Studio (BowTieRisk Studio): instalação no Windows e Linux, uso em equipe com SharePoint/OneDrive, editor de diagramas Bow Tie, relatórios, histórico e backups.">
+  <link rel="icon" href="img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --surface: #ffffff;
+      --surface-muted: #eceff3;
+      --border: #dce1e8;
+      --text: #172033;
+      --muted: #5c6675;
+      --accent: #1f4e9c;
+      --accent-hover: #163b79;
+      --accent-contrast: #ffffff;
+      --accent-soft: #e6ecf9;
+      --warning: #9a6b0c;
+      --warning-soft: #f7edd8;
+      --danger: #c0432a;
+      --danger-soft: #f7e4df;
+      --success: #2e7d53;
+      --success-soft: #e2f0e7;
+      --node-threat: #c0432a;
+      --node-cons: #9a6b0c;
+      --shadow: 0 1px 2px rgba(23, 32, 51, 0.06), 0 12px 32px rgba(23, 32, 51, 0.10);
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0f141e; --surface: #171f2c; --surface-muted: #1e2735; --border: #2a3345;
+        --text: #e6e9f0; --muted: #8d96a8;
+        --accent: #5b8def; --accent-hover: #7fa6f5; --accent-contrast: #0f141e; --accent-soft: #1c2d4d;
+        --warning: #d9a441; --warning-soft: #3a3018;
+        --danger: #e2694f; --danger-soft: #3a2420;
+        --success: #4cae79; --success-soft: #1f3327;
+        --node-threat: #e2694f; --node-cons: #d9a441;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0f141e; --surface: #171f2c; --surface-muted: #1e2735; --border: #2a3345;
+      --text: #e6e9f0; --muted: #8d96a8;
+      --accent: #5b8def; --accent-hover: #7fa6f5; --accent-contrast: #0f141e; --accent-soft: #1c2d4d;
+      --warning: #d9a441; --warning-soft: #3a3018;
+      --danger: #e2694f; --danger-soft: #3a2420;
+      --success: #4cae79; --success-soft: #1f3327;
+      --node-threat: #e2694f; --node-cons: #d9a441;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { max-width: 100%; display: block; }
+    code, kbd {
+      font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 0.86em;
+      background: var(--surface-muted); border: 1px solid var(--border); border-radius: 5px;
+      padding: 0.05em 0.38em; white-space: nowrap;
+    }
+    kbd { border-bottom-width: 2px; }
+    em.ui { font-style: normal; font-weight: 600; color: var(--text); background: var(--accent-soft); border-radius: 4px; padding: 0 0.3em; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+    /* ---------- Topo ---------- */
+    .nav {
+      position: sticky; top: 0; z-index: 20;
+      background: color-mix(in srgb, var(--bg) 85%, transparent);
+      backdrop-filter: blur(10px); border-bottom: 1px solid var(--border);
+    }
+    .nav__inner { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; gap: 20px; height: 60px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font-weight: 700; }
+    .brand:hover { text-decoration: none; }
+    .brand img { width: 28px; height: 28px; }
+    .brand span { color: var(--muted); font-weight: 500; }
+    .nav__links { margin-left: auto; display: flex; align-items: center; gap: 18px; font-size: 0.93rem; }
+    .nav__links a { color: var(--muted); }
+    .nav__links a:hover { color: var(--text); text-decoration: none; }
+    .nav__dl { background: var(--accent); color: var(--accent-contrast) !important; padding: 7px 14px; border-radius: 9px; font-weight: 600; }
+    .nav__dl:hover { background: var(--accent-hover); }
+    .theme-btn {
+      border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+      width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: grid; place-items: center; flex: none;
+    }
+    .theme-btn:hover { color: var(--text); }
+    @media (max-width: 700px) { .nav__links a:not(.nav__dl) { display: none; } .nav__inner { padding: 0 16px; gap: 12px; } .brand span { display: none; } }
+
+    /* ---------- Cabeçalho ---------- */
+    .intro {
+      border-bottom: 1px solid var(--border);
+      background-image:
+        linear-gradient(color-mix(in srgb, var(--accent) 7%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--accent) 7%, transparent) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .intro__inner { max-width: 1240px; margin: 0 auto; padding: 56px 24px 44px; }
+    .kicker { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+    .intro h1 { font-size: clamp(2.2rem, 5vw, 3.2rem); line-height: 1.1; margin: 10px 0 12px; letter-spacing: -0.02em; }
+    .intro p { max-width: 680px; color: var(--muted); font-size: 1.1rem; margin: 0; }
+    .quick { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+    .quick a {
+      display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 0.92rem; font-weight: 500;
+    }
+    .quick a:hover { border-color: var(--accent); text-decoration: none; }
+    .quick b { font-family: 'IBM Plex Mono', monospace; color: var(--accent); font-weight: 500; font-size: 0.82rem; }
+    @media (max-width: 600px) { .intro__inner { padding: 40px 16px 32px; } }
+
+    /* ---------- Layout ---------- */
+    .layout { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 56px; }
+    @media (max-width: 960px) { .layout { grid-template-columns: 1fr; gap: 0; } }
+    @media (max-width: 600px) { .layout { padding: 0 16px; } }
+
+    .toc { position: sticky; top: 60px; align-self: start; max-height: calc(100vh - 60px); overflow-y: auto; padding: 32px 0 40px; font-size: 0.9rem; }
+    .toc p { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px 12px; }
+    .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
+    .toc li { counter-increment: toc; }
+    .toc a { display: flex; gap: 10px; padding: 6px 12px; color: var(--muted); border-left: 2px solid var(--border); line-height: 1.4; }
+    .toc a::before { content: counter(toc, decimal-leading-zero); font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: var(--muted); opacity: 0.7; padding-top: 1px; }
+    .toc a:hover { color: var(--text); text-decoration: none; }
+    .toc a.is-active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+    .toc a.is-active::before { color: var(--accent); }
+    @media (max-width: 960px) { .toc { display: none; } }
+
+    .mobile-toc { display: none; margin: 24px 0 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+    .mobile-toc summary { padding: 12px 16px; cursor: pointer; font-weight: 600; }
+    .mobile-toc ol { margin: 0; padding: 0 16px 14px 36px; }
+    .mobile-toc li { padding: 3px 0; }
+    @media (max-width: 960px) { .mobile-toc { display: block; } }
+
+    /* ---------- Conteúdo ---------- */
+    main { padding: 16px 0 80px; min-width: 0; }
+    .chapter { padding-top: 40px; scroll-margin-top: 60px; }
+    .chapter + .chapter { border-top: 1px solid var(--border); margin-top: 32px; }
+    .chapter__num { font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; color: var(--accent); letter-spacing: 0.06em; }
+    h2 { font-size: clamp(1.6rem, 3.5vw, 2rem); line-height: 1.2; margin: 6px 0 12px; letter-spacing: -0.01em; }
+    h3 { font-size: 1.2rem; margin: 36px 0 10px; scroll-margin-top: 76px; }
+    h4 { font-size: 1rem; margin: 22px 0 6px; }
+    .lead { font-size: 1.08rem; color: var(--muted); max-width: 720px; }
+    main p, main li { max-width: 760px; }
+    main ul, main ol:not(.steps) { padding-left: 1.3em; }
+    main li + li { margin-top: 4px; }
+    .muted { color: var(--muted); }
+
+    .steps { list-style: none; margin: 16px 0; padding: 0; counter-reset: step; }
+    .steps > li { position: relative; padding: 0 0 20px 50px; counter-increment: step; max-width: 760px; }
+    .steps > li::before {
+      content: counter(step); position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 50%;
+      display: grid; place-items: center; font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 0.88rem;
+      background: var(--accent-soft); color: var(--accent);
+    }
+    .steps > li:not(:last-child)::after { content: ""; position: absolute; left: 15.5px; top: 38px; bottom: 4px; width: 1px; background: var(--border); }
+    .steps > li > strong:first-child { display: block; }
+    .steps p { margin: 2px 0 0; color: var(--muted); }
+
+    .callout { display: flex; gap: 12px; border-radius: 12px; padding: 14px 16px; margin: 18px 0; max-width: 760px; font-size: 0.95rem; border: 1px solid transparent; }
+    .callout svg { flex: none; margin-top: 4px; }
+    .callout p { margin: 0; }
+    .callout p + p { margin-top: 6px; }
+    .callout--tip { background: var(--accent-soft); } .callout--tip svg { color: var(--accent); }
+    .callout--warn { background: var(--warning-soft); } .callout--warn svg { color: var(--warning); }
+    .callout--danger { background: var(--danger-soft); } .callout--danger svg { color: var(--danger); }
+    .callout--ok { background: var(--success-soft); } .callout--ok svg { color: var(--success); }
+
+    .tree {
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.86rem; line-height: 1.75; white-space: pre; overflow-x: auto;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin: 14px 0; max-width: 760px;
+    }
+    .tree span { color: var(--muted); }
+
+    .figure { margin: 22px 0; max-width: 900px; }
+    .figure img, .figure svg.frame { border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); background: var(--surface); }
+    .figure--scroll { overflow-x: auto; }
+    .figure--scroll svg { min-width: 680px; }
+    .figure--narrow { max-width: 640px; }
+    .figure figcaption { font-size: 0.86rem; color: var(--muted); margin-top: 10px; }
+
+    .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 16px 0; max-width: 820px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; max-width: 900px; }
+    @media (max-width: 720px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+    .card strong { display: block; margin-bottom: 2px; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.93rem; }
+    .card .tag { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--accent); margin-bottom: 4px; }
+
+    .table-wrap { overflow-x: auto; margin: 16px 0; max-width: 860px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+    table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+    th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    th { font-size: 0.78rem; font-family: 'IBM Plex Mono', monospace; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--surface-muted); }
+    td:first-child { white-space: nowrap; }
+
+    .swatches { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .swatch { display: inline-flex; align-items: center; gap: 7px; font-size: 0.86rem; padding: 4px 10px 4px 6px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+    .swatch i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+    .badge { font-size: 0.8rem; font-weight: 600; border-radius: 999px; padding: 3px 10px; }
+    .badge--ok { background: var(--success-soft); color: var(--success); }
+    .badge--warn { background: var(--warning-soft); color: var(--warning); }
+
+    .scale { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 14px 0; max-width: 620px; }
+    .scale div { text-align: center; border-radius: 8px; padding: 8px 4px; background: var(--surface); border: 1px solid var(--border); font-size: 0.84rem; }
+    .scale b { display: block; font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem; color: var(--accent); }
+    @media (max-width: 520px) { .scale { grid-template-columns: repeat(3, 1fr); } }
+
+    .faq details { border-bottom: 1px solid var(--border); max-width: 800px; }
+    .faq summary { cursor: pointer; list-style: none; padding: 14px 0; font-weight: 600; display: flex; justify-content: space-between; gap: 16px; }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: "+"; font-family: 'IBM Plex Mono', monospace; color: var(--accent); font-size: 1.15rem; transition: transform 0.15s; }
+    .faq details[open] summary::after { transform: rotate(45deg); }
+    .faq details > div { padding: 0 0 16px; color: var(--muted); }
+    .faq details > div p { margin: 0 0 8px; }
+
+    /* Diagrama de anatomia do Bow Tie */
+    .anatomy { width: 100%; height: auto; }
+    .anatomy .ln { stroke: var(--border); stroke-width: 2; fill: none; }
+    .anatomy .box { fill: var(--surface); stroke-width: 2; }
+    .anatomy .t { fill: var(--text); font: 600 13px 'IBM Plex Sans', sans-serif; }
+    .anatomy .s { fill: var(--muted); font: 500 11px 'IBM Plex Mono', monospace; letter-spacing: 0.04em; }
+    .anatomy .lbl { fill: var(--accent); font: 500 11.5px 'IBM Plex Mono', monospace; letter-spacing: 0.05em; }
+    .anatomy .threat { stroke: var(--node-threat); }
+    .anatomy .cons { stroke: var(--node-cons); }
+    .anatomy .barrier { stroke: var(--border); fill: var(--surface-muted); }
+    .anatomy .top { stroke: var(--accent); fill: var(--accent-soft); }
+    .anatomy .hz { stroke: var(--muted); stroke-dasharray: 4 4; }
+
+    footer { border-top: 1px solid var(--border); padding: 28px 0 44px; color: var(--muted); font-size: 0.9rem; }
+    footer .in { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+    footer a { color: var(--text); }
+    .back-top { display: inline-block; margin-top: 28px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav__inner">
+      <a class="brand" href="./"><img src="img/logo.svg" alt=""> BTR Studio <span>/ Manual</span></a>
+      <div class="nav__links">
+        <a href="./">Início</a>
+        <a href="https://github.com/medeirosdev/BowTieRisk-Studio">GitHub</a>
+        <a class="nav__dl" href="./#download">Baixar</a>
+      </div>
+      <button class="theme-btn" type="button" id="theme-btn" aria-label="Alternar tema claro/escuro">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <header class="intro">
+    <div class="intro__inner">
+      <span class="kicker">Manual do usuário · versão 0.2</span>
+      <h1>Manual do BTR Studio</h1>
+      <p>Tudo o que você precisa para instalar, montar análises Bow Tie e trabalhar em equipe com segurança numa pasta do SharePoint ou OneDrive.</p>
+      <div class="quick">
+        <a href="#instalacao"><b>02</b> Instalar no Windows</a>
+        <a href="#editor"><b>05</b> Usar o editor</a>
+        <a href="#equipe"><b>07</b> Trabalhar em equipe</a>
+        <a href="#problemas"><b>11</b> Resolver problemas</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="toc" aria-label="Sumário">
+      <p>Sumário</p>
+      <ol id="toc-list">
+        <li><a href="#visao-geral">Visão geral</a></li>
+        <li><a href="#instalacao">Instalação</a></li>
+        <li><a href="#primeiros-passos">Primeiros passos</a></li>
+        <li><a href="#sessoes">Sessões e bowties</a></li>
+        <li><a href="#editor">O editor do diagrama</a></li>
+        <li><a href="#configuracoes">Configurações do projeto</a></li>
+        <li><a href="#equipe">Trabalho em equipe</a></li>
+        <li><a href="#relatorios">Relatórios e exportação</a></li>
+        <li><a href="#historico">Histórico e auditoria</a></li>
+        <li><a href="#backups">Backups e recuperação</a></li>
+        <li><a href="#problemas">Solução de problemas</a></li>
+        <li><a href="#atalhos">Atalhos e referência</a></li>
+      </ol>
+    </aside>
+
+    <main>
+      <details class="mobile-toc">
+        <summary>Sumário</summary>
+        <ol>
+          <li><a href="#visao-geral">Visão geral</a></li>
+          <li><a href="#instalacao">Instalação</a></li>
+          <li><a href="#primeiros-passos">Primeiros passos</a></li>
+          <li><a href="#sessoes">Sessões e bowties</a></li>
+          <li><a href="#editor">O editor do diagrama</a></li>
+          <li><a href="#configuracoes">Configurações do projeto</a></li>
+          <li><a href="#equipe">Trabalho em equipe</a></li>
+          <li><a href="#relatorios">Relatórios e exportação</a></li>
+          <li><a href="#historico">Histórico e auditoria</a></li>
+          <li><a href="#backups">Backups e recuperação</a></li>
+          <li><a href="#problemas">Solução de problemas</a></li>
+          <li><a href="#atalhos">Atalhos e referência</a></li>
+        </ol>
+      </details>
+
+      <!-- ===================== 01 ===================== -->
+      <section class="chapter" id="visao-geral">
+        <span class="chapter__num">01</span>
+        <h2>Visão geral</h2>
+        <p class="lead">O BTR Studio (BowTieRisk Studio) é um aplicativo para construir e manter análises de risco pelo método <strong>Bow Tie</strong> (“gravata borboleta”). Ele roda no seu computador, guarda tudo em arquivos numa pasta, e permite que uma equipe trabalhe nos mesmos projetos através do SharePoint ou OneDrive, sem servidor.</p>
+
+        <h3>O que é um diagrama Bow Tie</h3>
+        <p>Um Bow Tie mostra, numa única figura, como um <strong>perigo</strong> pode levar a um <strong>evento de topo</strong> (a perda de controle), o que pode causá-lo, o que pode resultar dele, e quais <strong>barreiras</strong> existem de cada lado.</p>
+
+        <figure class="figure figure--scroll">
+          <svg class="frame anatomy" viewBox="0 0 900 330" role="img" aria-label="Anatomia de um diagrama Bow Tie: ameaças à esquerda passam por barreiras preventivas até o evento de topo no centro; do evento de topo saem barreiras mitigatórias até as consequências à direita.">
+            <text class="lbl" x="70" y="34" text-anchor="middle">AMEAÇAS</text>
+            <text class="lbl" x="245" y="34" text-anchor="middle">BARREIRAS PREVENTIVAS</text>
+            <text class="lbl" x="450" y="34" text-anchor="middle">EVENTO DE TOPO</text>
+            <text class="lbl" x="655" y="34" text-anchor="middle">BARREIRAS MITIGATÓRIAS</text>
+            <text class="lbl" x="830" y="34" text-anchor="middle">CONSEQUÊNCIAS</text>
+
+            <path class="ln" d="M130 95 H190 M300 95 C350 95 360 165 385 165"/>
+            <path class="ln" d="M130 165 H190 M300 165 H385"/>
+            <path class="ln" d="M130 235 H190 M300 235 C350 235 360 165 385 165"/>
+            <path class="ln" d="M515 165 C545 165 555 110 600 110 M710 110 H770"/>
+            <path class="ln" d="M515 165 C545 165 555 220 600 220 M710 220 H770"/>
+
+            <rect class="box threat" x="14" y="76" width="116" height="38" rx="8"/><text class="t" x="72" y="100" text-anchor="middle">Corrosão</text>
+            <rect class="box threat" x="14" y="146" width="116" height="38" rx="8"/><text class="t" x="72" y="170" text-anchor="middle">Erro de operação</text>
+            <rect class="box threat" x="14" y="216" width="116" height="38" rx="8"/><text class="t" x="72" y="240" text-anchor="middle">Sobrepressão</text>
+
+            <rect class="box barrier" x="190" y="76" width="110" height="38" rx="8"/><text class="t" x="245" y="100" text-anchor="middle">Inspeção</text>
+            <rect class="box barrier" x="190" y="146" width="110" height="38" rx="8"/><text class="t" x="245" y="170" text-anchor="middle">Treinamento</text>
+            <rect class="box barrier" x="190" y="216" width="110" height="38" rx="8"/><text class="t" x="245" y="240" text-anchor="middle">Válvula de alívio</text>
+
+            <rect class="box top" x="385" y="138" width="130" height="54" rx="10"/>
+            <text class="s" x="450" y="159" text-anchor="middle">EVENTO DE TOPO</text>
+            <text class="t" x="450" y="178" text-anchor="middle">Perda de contenção</text>
+            <rect class="box hz" x="395" y="62" width="110" height="36" rx="8" fill="none"/>
+            <text class="s" x="450" y="78" text-anchor="middle">PERIGO</text>
+            <text class="t" x="450" y="93" text-anchor="middle" style="font-size:11.5px">Cloro armazenado</text>
+            <path class="ln hz" d="M450 98 V138"/>
+
+            <rect class="box barrier" x="592" y="91" width="126" height="38" rx="8"/><text class="t" x="655" y="115" text-anchor="middle">Detector de gás</text>
+            <rect class="box barrier" x="592" y="201" width="126" height="38" rx="8"/><text class="t" x="655" y="225" text-anchor="middle">Plano de emergência</text>
+
+            <rect class="box cons" x="770" y="91" width="116" height="38" rx="8"/><text class="t" x="828" y="115" text-anchor="middle">Intoxicação</text>
+            <rect class="box cons" x="770" y="201" width="116" height="38" rx="8"/><text class="t" x="828" y="225" text-anchor="middle">Dano ambiental</text>
+
+            <text class="s" x="245" y="300" text-anchor="middle">evitam que a ameaça cause o evento</text>
+            <text class="s" x="655" y="300" text-anchor="middle">reduzem o efeito depois do evento</text>
+          </svg>
+          <figcaption>Anatomia de um Bow Tie: causas à esquerda, efeitos à direita, e o evento de topo no nó central.</figcaption>
+        </figure>
+
+        <h3>Como o app organiza o trabalho</h3>
+        <div class="grid3">
+          <div class="card"><span class="tag">Nível 1</span><strong>Projeto</strong><p>Uma planta, unidade ou estudo. Cada projeto é um arquivo <code>.db</code> próprio e tem suas categorias, tipos de barreira e aviso.</p></div>
+          <div class="card"><span class="tag">Nível 2</span><strong>Sessão</strong><p>Um agrupamento dentro do projeto, por exemplo uma reunião de análise ou uma etapa (“Análise — Julho/2026”).</p></div>
+          <div class="card"><span class="tag">Nível 3</span><strong>Bowtie</strong><p>Um diagrama, com um perigo e um evento de topo, suas ameaças, consequências e barreiras.</p></div>
+        </div>
+      </section>
+
+      <!-- ===================== 02 ===================== -->
+      <section class="chapter" id="instalacao">
+        <span class="chapter__num">02</span>
+        <h2>Instalação</h2>
+        <p class="lead">O BTR Studio é <strong>portátil</strong>: não tem instalador. Você baixa uma pasta, coloca onde quiser e abre o programa de dentro dela. Os projetos ficam guardados nessa mesma pasta.</p>
+
+        <h3>Requisitos</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Sistema</th><th>O que precisa</th></tr></thead>
+            <tbody>
+              <tr><td>Windows 10 ou 11 (64 bits)</td><td>Nada além do sistema. O componente WebView2, usado para desenhar a interface, já vem no Windows 11 e nas versões atualizadas do Windows 10.</td></tr>
+              <tr><td>Linux (64 bits)</td><td>Biblioteca WebKitGTK 4.1 (no Debian/Ubuntu, pacote <code>libwebkit2gtk-4.1-0</code>).</td></tr>
+              <tr><td>Uso em equipe</td><td>Uma biblioteca do SharePoint ou pasta do OneDrive compartilhada, sincronizada no computador de cada pessoa.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="instalar-windows">Windows</h3>
+        <ol class="steps">
+          <li><strong>Baixe o pacote</strong><p>Na <a href="./">página inicial</a>, clique em <em class="ui">Baixar para Windows</em>. Você recebe o arquivo <code>BTR-Studio-windows-portatil.zip</code>.</p></li>
+          <li><strong>Extraia o ZIP</strong><p>Clique com o botão direito no arquivo e escolha <em class="ui">Extrair tudo…</em>. Para uso em equipe, extraia direto dentro da pasta compartilhada (veja a seção seguinte). Não rode o programa de dentro do ZIP sem extrair.</p></li>
+          <li><strong>Confira a pasta</strong><p>Ela deve ter esta estrutura:</p>
+            <div class="tree">BTR-Studio/
+├── BTR-Studio.exe   <span>o programa</span>
+├── bancos/          <span>os projetos: um arquivo .db por projeto</span>
+├── backups/         <span>cópias automáticas a cada sincronização</span>
+└── LEIAME.txt</div>
+          </li>
+          <li><strong>Abra o <code>BTR-Studio.exe</code></strong><p>Dê dois cliques. Se preferir, crie um atalho na Área de Trabalho (botão direito → <em class="ui">Mostrar mais opções</em> → <em class="ui">Enviar para</em> → <em class="ui">Área de trabalho (criar atalho)</em>).</p></li>
+        </ol>
+        <div class="callout callout--warn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg>
+          <div>
+            <p><strong>“O Windows protegeu o computador”.</strong> Na primeira execução o SmartScreen pode mostrar esse aviso, porque o executável ainda não tem assinatura digital. Clique em <em class="ui">Mais informações</em> e depois em <em class="ui">Executar assim mesmo</em>. Isso só acontece uma vez por computador.</p>
+            <p>Em computadores corporativos, a TI pode bloquear programas não assinados. Nesse caso, peça a liberação do <code>BTR-Studio.exe</code>.</p>
+          </div>
+        </div>
+
+        <h3 id="instalar-linux">Linux</h3>
+        <ol class="steps">
+          <li><strong>Instale a dependência (uma vez)</strong><div class="tree">sudo apt install libwebkit2gtk-4.1-0</div></li>
+          <li><strong>Baixe e extraia</strong><div class="tree">tar -xzf BTR-Studio-linux-portatil.tar.gz</div></li>
+          <li><strong>Abra</strong><div class="tree">cd BTR-Studio
+./btr-studio</div><p>A estrutura da pasta é a mesma do Windows, com <code>btr-studio</code> no lugar do <code>.exe</code>.</p></li>
+        </ol>
+
+        <h3 id="pasta-compartilhada">Colocando na pasta compartilhada (uso em equipe)</h3>
+        <p>Para várias pessoas trabalharem nos mesmos projetos, a pasta <code>BTR-Studio</code> inteira precisa ficar dentro de uma pasta sincronizada pelo OneDrive.</p>
+        <ol class="steps">
+          <li><strong>Escolha o local</strong><p>Uma biblioteca de documentos do SharePoint do seu time, ou uma pasta do OneDrive compartilhada com a equipe.</p></li>
+          <li><strong>Sincronize no computador de cada pessoa</strong><p>No SharePoint, abra a biblioteca no navegador e clique em <em class="ui">Sincronizar</em> (ou em <em class="ui">Adicionar atalho a Meus arquivos</em>). A pasta passa a aparecer no Explorador de Arquivos, dentro do OneDrive.</p></li>
+          <li><strong>Extraia o <code>BTR-Studio</code> lá dentro</strong><p>Basta uma pessoa fazer isso; o OneDrive leva a pasta para os demais.</p></li>
+          <li><strong>Mantenha os arquivos no computador</strong><p>Clique com o botão direito na pasta <code>BTR-Studio</code> e escolha <em class="ui">Sempre manter neste dispositivo</em>. Assim o programa e os projetos ficam disponíveis mesmo sem internet e abrem mais rápido.</p></li>
+          <li><strong>Cada pessoa abre o programa de dentro da pasta</strong><p>Ou por um atalho que aponte para ela.</p></li>
+        </ol>
+        <div class="callout callout--danger">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          <div><p><strong>Não copie o <code>.exe</code> para fora da pasta.</strong> O programa sempre usa as pastas <code>bancos/</code> e <code>backups/</code> que estão ao lado dele. Uma cópia na Área de Trabalho abre com a lista de projetos vazia, e o que for criado nela não chega à equipe. Use um <strong>atalho</strong>.</p></div>
+        </div>
+
+        <h3 id="atualizar">Atualizar para uma versão nova</h3>
+        <ol class="steps">
+          <li><strong>Peça para todos fecharem o app</strong><p>Ninguém pode estar com ele aberto durante a troca.</p></li>
+          <li><strong>Baixe a versão nova</strong><p>Extraia o ZIP numa pasta temporária.</p></li>
+          <li><strong>Troque só o executável</strong><p>Copie o novo <code>BTR-Studio.exe</code> por cima do antigo, na pasta compartilhada. <strong>Não</strong> substitua as pastas <code>bancos/</code> e <code>backups/</code>: são os seus dados.</p></li>
+        </ol>
+        <p class="muted">Ao abrir um projeto criado numa versão anterior, o app atualiza a estrutura do arquivo sozinho e registra isso no histórico. Não é preciso fazer nada.</p>
+      </section>
+
+      <!-- ===================== 03 ===================== -->
+      <section class="chapter" id="primeiros-passos">
+        <span class="chapter__num">03</span>
+        <h2>Primeiros passos</h2>
+
+        <h3>Identificação</h3>
+        <p>Na primeira vez, o app pede <strong>nome</strong> e <strong>email</strong>. Não é uma senha, é só para registrar no histórico quem fez cada alteração e mostrar aos colegas quem está editando um projeto. O app lembra de você nas próximas vezes; para trocar de pessoa, use <em class="ui">Sair</em> no canto superior direito.</p>
+        <figure class="figure figure--narrow">
+          <img src="img/Login.png" alt="Tela de identificação do BTR Studio, com campos de nome e email" width="1434" height="920" loading="lazy">
+          <figcaption>Tela de identificação.</figcaption>
+        </figure>
+
+        <h3>A barra superior</h3>
+        <ul>
+          <li><strong>Caminho</strong> (ex.: <em>Projetos / Planta Química / Sessão de julho / Tanque 3</em>): clique em qualquer parte para voltar a ela. Clicar em <em class="ui">Projetos</em> fecha o projeto atual e sincroniza.</li>
+          <li><strong>Tema</strong>: alterna entre claro, escuro ou seguir o sistema.</li>
+          <li><strong>Seu nome e email</strong>, e o botão <em class="ui">Sair</em>.</li>
+        </ul>
+
+        <h3>Tela de projetos</h3>
+        <p>Lista todos os projetos da pasta <code>bancos/</code>. Logo abaixo do título aparece a <strong>pasta de dados</strong> em uso. Confira que ela aponta para a pasta compartilhada.</p>
+        <h4>Criar um projeto</h4>
+        <ol class="steps">
+          <li><strong>Preencha o formulário</strong><p>Em <em class="ui">Criar banco para o projeto</em>, informe o <em>Nome do projeto</em> (até 80 caracteres) e, se quiser, uma descrição.</p></li>
+          <li><strong>Clique em <em class="ui">Criar projeto</em></strong><p>O app cria o arquivo <code>bancos/&lt;nome-do-projeto&gt;.db</code> e já abre o projeto para edição.</p></li>
+        </ol>
+        <h4>Renomear e excluir</h4>
+        <ul>
+          <li><em class="ui">Renomear</em> altera o nome e a descrição. O nome do arquivo <code>.db</code> não muda.</li>
+          <li><em class="ui">Excluir</em> tira o projeto da lista, mas <strong>não apaga o arquivo</strong> <code>.db</code>, que continua em <code>bancos/</code> como registro.</li>
+          <li>As duas ações ficam bloqueadas enquanto outra pessoa estiver com o projeto aberto. O app avisa quem é.</li>
+        </ul>
+      </section>
+
+      <!-- ===================== 04 ===================== -->
+      <section class="chapter" id="sessoes">
+        <span class="chapter__num">04</span>
+        <h2>Sessões e bowties</h2>
+        <p class="lead">Ao abrir um projeto você vê as sessões dele; ao abrir uma sessão, os bowties dela.</p>
+
+        <h3>Sessões</h3>
+        <p>Em <em class="ui">Nova sessão</em>, informe o nome (ex.: “Análise de risco — Julho/2026”) e uma descrição opcional, e clique em <em class="ui">Criar sessão</em>. Cada sessão pode ser renomeada ou excluída pela lista.</p>
+        <div class="callout callout--warn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg>
+          <div><p>Excluir uma sessão exclui também <strong>todos os bowties</strong> dela. O app pede confirmação, e a exclusão fica registrada no histórico.</p></div>
+        </div>
+
+        <h3>Bowties</h3>
+        <p>Em <em class="ui">Novo bowtie</em>, informe:</p>
+        <ul>
+          <li><strong>Nome do bowtie</strong>: como ele aparece na lista (ex.: “Vazamento de cloro — Tanque 3”).</li>
+          <li><strong>Perigo</strong> e <strong>Evento de topo</strong>: podem ser preenchidos agora ou depois, no editor.</li>
+          <li><strong>Descrição</strong>: opcional.</li>
+        </ul>
+        <p>Clique no bowtie na lista para abrir o editor do diagrama.</p>
+      </section>
+
+      <!-- ===================== 05 ===================== -->
+      <section class="chapter" id="editor">
+        <span class="chapter__num">05</span>
+        <h2>O editor do diagrama</h2>
+        <p class="lead">O editor mostra o bowtie inteiro num canvas interativo. Ameaças e barreiras preventivas ficam à esquerda; consequências e barreiras mitigatórias, à direita. Clique em qualquer item para editá-lo no painel lateral.</p>
+        <figure class="figure">
+          <img src="img/Diagrama.png" alt="Editor do BTR Studio mostrando um diagrama com ameaças, barreiras, evento de topo e consequências" width="1434" height="920" loading="lazy">
+          <figcaption>O editor, com a barra de ferramentas no topo, o canvas no centro e o painel lateral à direita.</figcaption>
+        </figure>
+
+        <h3>Barra de ferramentas</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Botão</th><th>O que faz</th></tr></thead>
+            <tbody>
+              <tr><td><em class="ui">+ ameaça</em></td><td>Abre o formulário de nova ameaça no painel lateral.</td></tr>
+              <tr><td><em class="ui">+ consequência</em></td><td>Abre o formulário de nova consequência.</td></tr>
+              <tr><td><em class="ui">Exportar PNG</em></td><td>Salva uma imagem do diagrama.</td></tr>
+              <tr><td><em class="ui">Exportar Markdown</em></td><td>Salva um relatório em texto com todos os itens.</td></tr>
+              <tr><td><em class="ui">Imprimir</em></td><td>Imprime o relatório, ou salva como PDF.</td></tr>
+              <tr><td><em class="ui">Filtrar categorias</em></td><td>Esmaece no diagrama as categorias que você desmarcar (veja abaixo).</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted">Em modo somente leitura, <em>+ ameaça</em> e <em>+ consequência</em> não aparecem e o painel lateral só mostra os dados. Exportar, imprimir e filtrar continuam disponíveis.</p>
+
+        <h3>Perigo e evento de topo</h3>
+        <p>Clique no <strong>nó central</strong>. No painel lateral, preencha o <em>Perigo</em> (ex.: “Armazenamento de cloro”) e o <em>Evento de topo</em> (ex.: “Liberação de cloro”) e clique em <em class="ui">Salvar</em>.</p>
+
+        <h3>Ameaças e consequências</h3>
+        <ol class="steps">
+          <li><strong>Crie</strong><p>Clique em <em class="ui">+ ameaça</em> ou <em class="ui">+ consequência</em>, escreva o nome, escolha uma <em>Categoria</em> (opcional) e confirme.</p></li>
+          <li><strong>Edite</strong><p>Clique no item no diagrama para mudar o nome ou a categoria.</p></li>
+          <li><strong>Posicione</strong><p>Arraste o item pelo canvas. A posição fica salva no projeto.</p></li>
+        </ol>
+        <p>Cada item com categoria ganha uma faixa colorida na lateral e uma etiqueta com o nome da categoria. Ameaças e consequências têm listas de categorias separadas; veja <a href="#configuracoes">Configurações do projeto</a>.</p>
+
+        <h3>Barreiras</h3>
+        <p>As barreiras ficam na linha entre cada ameaça e o evento de topo (<strong>preventivas</strong>) ou entre o evento de topo e cada consequência (<strong>mitigatórias</strong>).</p>
+        <ol class="steps">
+          <li><strong>Adicione</strong><p>Selecione a ameaça ou a consequência. No painel lateral, clique em <em class="ui">Adicionar barreira preventiva</em> (ou mitigatória), informe o nome, o tipo e a efetividade, e clique em <em class="ui">Adicionar</em>.</p></li>
+          <li><strong>Detalhe</strong><p>Clique na barreira no diagrama para editar o nome, a <em>Descrição</em> (texto livre, para detalhes como responsável, frequência de teste etc.), o <em>Tipo de barreira</em> e a <em>Efetividade</em>.</p></li>
+          <li><strong>Reordene</strong><p>Arraste a barreira ao longo da linha, ou use as setas ↑ ↓ na lista de barreiras do painel lateral. A ordem representa a sequência de defesa.</p></li>
+        </ol>
+        <h4>Escala de efetividade</h4>
+        <div class="scale">
+          <div><b>1</b>Muito baixa</div><div><b>2</b>Baixa</div><div><b>3</b>Média</div><div><b>4</b>Alta</div><div><b>5</b>Muito alta</div>
+        </div>
+        <p class="muted">Deixe em branco para marcar como “Não avaliada”.</p>
+
+        <h3>Excluir itens</h3>
+        <p>Selecione o item e pressione <kbd>Delete</kbd>, ou use o botão <em class="ui">Excluir</em> do painel lateral. O app sempre pede confirmação. Excluir uma ameaça ou consequência exclui também as barreiras dela.</p>
+
+        <h3>Filtro de categorias</h3>
+        <p>Em <em class="ui">Filtrar categorias</em>, desmarque as categorias que não interessam no momento. Os itens delas (e as barreiras ligadas a eles) ficam <strong>transparentes</strong>, sem sumir do diagrama, e você continua podendo selecioná-los. O botão passa a mostrar quantas estão ocultas; <em class="ui">Mostrar todas</em> desfaz o filtro. O filtro não é salvo e não afeta os colegas.</p>
+
+        <h3>Navegar no canvas</h3>
+        <ul>
+          <li><strong>Mover a visão</strong>: arraste o fundo do canvas.</li>
+          <li><strong>Zoom</strong>: roda do mouse, ou os botões + e − no canto inferior esquerdo. O botão de enquadrar mostra o diagrama inteiro.</li>
+          <li><strong>Minimapa</strong>: no canto inferior direito, mostra onde você está num diagrama grande.</li>
+          <li><kbd>Esc</kbd> fecha o painel lateral.</li>
+        </ul>
+      </section>
+
+      <!-- ===================== 06 ===================== -->
+      <section class="chapter" id="configuracoes">
+        <span class="chapter__num">06</span>
+        <h2>Configurações do projeto</h2>
+        <p class="lead">Cada projeto tem suas próprias listas e seu aviso. Abra pela barra de status, em <em class="ui">Configurações do projeto</em>. Só quem está editando o projeto pode alterá-las.</p>
+
+        <h3>Aviso do projeto</h3>
+        <p>Um recado para toda a equipe, exibido no topo de todas as telas do projeto, com o nome de quem escreveu e a data. Use para coisas como “Não mexer no bowtie Tanque 3 — em revisão até sexta”. Escreva o texto e clique em <em class="ui">Salvar aviso</em>; para tirar, <em class="ui">Remover aviso</em>. Existe um aviso por projeto.</p>
+
+        <h3>Categorias de ameaças e de consequências</h3>
+        <p>São duas listas separadas. Todo projeto novo começa com:</p>
+        <div class="grid2">
+          <div class="card"><strong>Ameaças</strong><p>Pessoas · Resíduos · Equipamento</p></div>
+          <div class="card"><strong>Consequências</strong><p>Pessoas · Meio ambiente · Patrimônio</p></div>
+        </div>
+        <p>Para adicionar, escreva o nome, escolha uma cor e clique em <em class="ui">Adicionar</em>. Para trocar a cor de uma categoria existente, clique numa das bolinhas ao lado dela. As cores disponíveis são:</p>
+        <div class="swatches">
+          <span class="swatch"><i style="background:#e05a4f"></i>Vermelho</span>
+          <span class="swatch"><i style="background:#e8893a"></i>Laranja</span>
+          <span class="swatch"><i style="background:#d6ad2b"></i>Amarelo</span>
+          <span class="swatch"><i style="background:#45a868"></i>Verde</span>
+          <span class="swatch"><i style="background:#2c9faa"></i>Turquesa</span>
+          <span class="swatch"><i style="background:#4d7fd8"></i>Azul</span>
+          <span class="swatch"><i style="background:#9366d4"></i>Roxo</span>
+          <span class="swatch"><i style="background:#8a93a3"></i>Cinza</span>
+        </div>
+        <p>Excluir uma categoria não apaga nenhum item: quem a usava fica <em>sem categoria</em>. Não pode haver duas categorias com o mesmo nome na mesma lista.</p>
+
+        <h3>Tipos de barreira</h3>
+        <p>A lista de opções do campo <em>Tipo de barreira</em>. Todo projeto começa com a classificação usual de 5 tipos:</p>
+        <ul>
+          <li>Hardware Passivo</li>
+          <li>Hardware Ativo</li>
+          <li>Hardware Ativo + Humano</li>
+          <li>Humano / Comportamental</li>
+          <li>Hardware Contínuo</li>
+        </ul>
+        <p>Adicione tipos próprios em <em class="ui">Adicionar tipo</em> (ex.: “Barreira Digital”). Excluir um tipo só o tira da lista de opções: barreiras que já usam esse nome continuam com ele.</p>
+      </section>
+
+      <!-- ===================== 07 ===================== -->
+      <section class="chapter" id="equipe">
+        <span class="chapter__num">07</span>
+        <h2>Trabalho em equipe</h2>
+        <p class="lead">Várias pessoas podem usar os mesmos projetos, mas <strong>uma de cada vez edita cada projeto</strong>. É isso que impede que o trabalho de alguém seja sobrescrito, e que os arquivos se corrompam na sincronização do OneDrive.</p>
+
+        <h3>Editando ou somente leitura</h3>
+        <p>A barra de status, logo abaixo do topo, mostra o seu modo no projeto:</p>
+        <div class="badges"><span class="badge badge--ok">Editando</span><span class="badge badge--warn">Somente leitura — Maria está editando</span></div>
+        <ul>
+          <li><strong>Editando</strong>: você abriu o projeto primeiro. Pode alterar tudo.</li>
+          <li><strong>Somente leitura</strong>: outra pessoa está editando. Você pode ver tudo, exportar e imprimir, mas não alterar. Quando ela fechar, saia e abra o projeto de novo.</li>
+          <li>Outros projetos continuam livres: duas pessoas podem editar ao mesmo tempo, desde que em <strong>projetos diferentes</strong>.</li>
+        </ul>
+
+        <h3>Sincronizar</h3>
+        <p>Enquanto você edita, as alterações são salvas numa cópia local, no seu computador. O botão <em class="ui">Sincronizar</em> publica essa cópia na pasta compartilhada, e só então os colegas passam a ver as mudanças. A barra mostra o horário do último sync.</p>
+        <div class="callout callout--ok">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+          <div><p><strong>O app sincroniza sozinho</strong> quando você volta para a lista de projetos, clica em <em class="ui">Sair</em> ou fecha a janela. Mesmo assim, vale sincronizar de vez em quando numa sessão longa, para os colegas verem o progresso.</p></div>
+        </div>
+        <p>Se a sincronização falhar na saída (por exemplo, sem acesso à pasta), o app pergunta se você quer <em class="ui">Ficar e tentar de novo</em> ou <em class="ui">Sair mesmo assim</em>. Saindo, as alterações ficam guardadas no seu computador e são recuperadas na próxima vez que você abrir o projeto.</p>
+
+        <h3>Quando alguém esquece o projeto aberto</h3>
+        <p>Enquanto um projeto está aberto em edição, o app avisa “ainda estou aqui” a cada 30 segundos. Se o computador da pessoa desligar, travar ou perder a rede, esse aviso para. Depois de <strong>3 minutos</strong> sem sinal, o próximo que abrir o projeto assume a edição, e o app mostra de quem era o projeto.</p>
+
+        <h3>Quando você perde a edição</h3>
+        <p>Se o <em>seu</em> computador ficar parado por mais de 3 minutos com o projeto aberto (suspenso, por exemplo) e alguém assumir nesse meio-tempo, o app avisa e passa o projeto para somente leitura. Suas alterações não sincronizadas <strong>não se perdem</strong>: elas não são publicadas por cima do trabalho da outra pessoa e ficam guardadas em <code>backups/nao-sincronizados/</code> na próxima vez que você abrir o projeto.</p>
+
+        <h3>Boas práticas</h3>
+        <div class="grid2">
+          <div class="card"><strong>Feche quando terminar</strong><p>Volte para a lista de projetos ou feche o app. Isso sincroniza e libera o projeto para os colegas.</p></div>
+          <div class="card"><strong>Use o aviso do projeto</strong><p>Combine com a equipe pelo aviso (ex.: “Revisão em andamento, não editar”).</p></div>
+          <div class="card"><strong>Divida por projetos</strong><p>Se duas pessoas precisam editar ao mesmo tempo, separe o trabalho em projetos diferentes.</p></div>
+          <div class="card"><strong>Espere o OneDrive</strong><p>Se acabou de chegar ao escritório, espere o ícone do OneDrive mostrar que está tudo sincronizado antes de abrir um projeto.</p></div>
+        </div>
+      </section>
+
+      <!-- ===================== 08 ===================== -->
+      <section class="chapter" id="relatorios">
+        <span class="chapter__num">08</span>
+        <h2>Relatórios e exportação</h2>
+        <p class="lead">Tudo sai do editor do bowtie. Em todos os casos o app abre a janela <em>Salvar como</em> do sistema para você escolher o local e o nome.</p>
+        <div class="grid3">
+          <div class="card"><span class="tag">Imagem</span><strong>Exportar PNG</strong><p>O diagrama inteiro numa imagem de 1600 × 1000 pixels, pronta para colar em apresentações e relatórios.</p></div>
+          <div class="card"><span class="tag">Texto</span><strong>Exportar Markdown</strong><p>Relatório com perigo, evento de topo, cada ameaça e consequência com categoria, e cada barreira com tipo, efetividade e descrição. Abre em qualquer editor de texto, no Word ou no GitHub.</p></div>
+          <div class="card"><span class="tag">Papel / PDF</span><strong>Imprimir</strong><p>O mesmo relatório formatado para impressão. Na janela de impressão, escolha <em>Salvar como PDF</em> para gerar um PDF.</p></div>
+        </div>
+      </section>
+
+      <!-- ===================== 09 ===================== -->
+      <section class="chapter" id="historico">
+        <span class="chapter__num">09</span>
+        <h2>Histórico e auditoria</h2>
+        <p class="lead">Toda alteração no projeto fica registrada: quem fez, quando, o que foi alterado e, nas edições, como estava antes e como ficou depois. Abra pela barra de status, em <em class="ui">Histórico / Auditoria</em>.</p>
+
+        <h3>Filtros</h3>
+        <p>Filtre por <em>Usuário</em>, <em>Entidade</em> (projeto, sessão, bowtie, ameaça, barreira, categoria…), <em>Ação</em> e período (<em>De</em> / <em>Até</em>). <em class="ui">Limpar filtros</em> volta a mostrar tudo. Um resumo no topo conta os registros por ação, por usuário e por dia.</p>
+
+        <h3>Ações registradas</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ação</th><th>Significado</th></tr></thead>
+            <tbody>
+              <tr><td><code>CREATE</code> · <code>UPDATE</code> · <code>DELETE</code></td><td>Criação, edição e exclusão de qualquer item.</td></tr>
+              <tr><td><code>OPEN</code> · <code>CLOSE</code></td><td>Alguém abriu ou fechou o projeto.</td></tr>
+              <tr><td><code>LOCK</code> · <code>UNLOCK</code></td><td>Alguém assumiu ou liberou a edição.</td></tr>
+              <tr><td><code>SYNC</code></td><td>Alterações publicadas na pasta compartilhada.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Exportar CSV</h3>
+        <p><em class="ui">Exportar CSV</em> salva os registros filtrados numa planilha. O arquivo usa ponto e vírgula e acentuação correta, e abre direto no Excel em português, já separado em colunas.</p>
+      </section>
+
+      <!-- ===================== 10 ===================== -->
+      <section class="chapter" id="backups">
+        <span class="chapter__num">10</span>
+        <h2>Backups e recuperação</h2>
+
+        <h3>Backups automáticos</h3>
+        <p>A cada sincronização, o app guarda uma cópia do projeto em <code>backups/</code>, com data e hora no nome (ex.: <code>planta-quimica_20260928_151750.db</code>). Ficam as <strong>30 mais recentes</strong> de cada projeto; as mais antigas são apagadas sozinhas. O app também verifica a integridade do arquivo a cada sincronização e avisa se algo estiver errado.</p>
+
+        <h3>Alterações recuperadas depois de uma queda</h3>
+        <p>Se o app fechar sem sincronizar (travamento, queda de energia, “Sair mesmo assim”), a próxima abertura do projeto resolve sozinha:</p>
+        <ul>
+          <li><strong>Ninguém mexeu no projeto nesse meio-tempo</strong>: você continua exatamente de onde parou. A barra de status avisa que as alterações foram recuperadas; é só sincronizar.</li>
+          <li><strong>Alguém mexeu</strong>: a sua versão é guardada em <code>backups/nao-sincronizados/</code>, e a barra de status mostra o caminho. Você abre a versão atual, com as mudanças dos colegas, e pode consultar a sua cópia guardada.</li>
+        </ul>
+
+        <h3>Voltar para uma versão anterior</h3>
+        <ol class="steps">
+          <li><strong>Garanta que ninguém está com o projeto aberto</strong><p>Peça para a equipe fechar o projeto. Se alguém estiver editando, ele aparece como somente leitura para você.</p></li>
+          <li><strong>Guarde a versão atual</strong><p>Faça uma cópia de <code>bancos/&lt;projeto&gt;.db</code> para um lugar seguro, por precaução.</p></li>
+          <li><strong>Restaure</strong><p>Copie o backup desejado de <code>backups/</code> para <code>bancos/</code> e renomeie para o nome exato do arquivo original (ex.: <code>planta-quimica.db</code>), substituindo-o.</p></li>
+          <li><strong>Abra o projeto</strong><p>Ele volta ao estado daquele backup.</p></li>
+        </ol>
+      </section>
+
+      <!-- ===================== 11 ===================== -->
+      <section class="chapter faq" id="problemas">
+        <span class="chapter__num">11</span>
+        <h2>Solução de problemas</h2>
+
+        <details>
+          <summary>A lista de projetos está vazia, mas a equipe tem projetos</summary>
+          <div>
+            <p>O app está rodando de uma cópia fora da pasta compartilhada. Veja a <em>Pasta de dados</em> na tela de projetos: ela precisa estar dentro da pasta do SharePoint/OneDrive.</p>
+            <p>Feche o app, apague a cópia avulsa do <code>.exe</code> e abra o da pasta compartilhada (ou um atalho para ele).</p>
+          </div>
+        </details>
+        <details>
+          <summary>O projeto abre em “somente leitura”</summary>
+          <div><p>Outra pessoa está editando; o nome dela aparece na barra de status. Espere ela fechar e abra de novo. Se ela saiu sem fechar, o projeto é liberado sozinho depois de 3 minutos sem atividade.</p></div>
+        </details>
+        <details>
+          <summary>Não vejo as alterações que um colega acabou de fazer</summary>
+          <div>
+            <p>Verifique se o colega <strong>sincronizou</strong> (ou fechou o projeto), e se o OneDrive já trouxe o arquivo novo para o seu computador: o ícone do OneDrive na barra de tarefas não pode estar mostrando sincronização em andamento.</p>
+            <p>Depois, volte para a lista de projetos e abra o projeto de novo.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Apareceu um aviso de que o arquivo original mudou</summary>
+          <div><p>Na hora de sincronizar, o app percebeu que o arquivo compartilhado tinha sido alterado depois que você abriu o projeto (por exemplo, o OneDrive restaurou uma versão antiga). A sincronização é feita mesmo assim; confira o <a href="#historico">histórico</a> e, se necessário, os <a href="#backups">backups</a>.</p></div>
+        </details>
+        <details>
+          <summary>Não foi possível sincronizar</summary>
+          <div><p>Normalmente a pasta compartilhada está inacessível: OneDrive pausado, sem rede ou sem espaço. Resolva e clique em <em class="ui">Sincronizar</em> de novo. As alterações não se perdem enquanto isso; se precisar sair, use <em class="ui">Sair mesmo assim</em> e elas são recuperadas na próxima abertura.</p></div>
+        </details>
+        <details>
+          <summary>O Windows não deixa abrir o programa</summary>
+          <div>
+            <p>Se aparecer o SmartScreen, clique em <em class="ui">Mais informações</em> → <em class="ui">Executar assim mesmo</em>. Se nem essa opção existir, a política da empresa bloqueia programas não assinados: peça à TI a liberação do <code>BTR-Studio.exe</code>.</p>
+            <p>Se a janela abrir em branco, atualize o Windows ou instale o “Microsoft Edge WebView2 Runtime” do site da Microsoft.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Abri o programa duas vezes e só apareceu uma janela</summary>
+          <div><p>É de propósito: o app roda uma instância só por computador, para evitar que duas janelas editem o mesmo projeto. Abrir de novo apenas traz a janela existente para a frente.</p></div>
+        </details>
+        <details>
+          <summary>Vejo arquivos <code>.lock.json</code> e <code>.tmp</code> na pasta <code>bancos/</code></summary>
+          <div><p>São arquivos de controle do app: o <code>.lock.json</code> indica quem está editando o projeto, e os temporários aparecem por instantes durante a sincronização. Não apague nem edite esses arquivos com o app aberto.</p></div>
+        </details>
+        <details>
+          <summary>Onde encontro minhas alterações guardadas?</summary>
+          <div><p>Em <code>backups/nao-sincronizados/</code>, dentro da pasta do app, com o nome do projeto e a data. Veja <a href="#backups">Backups e recuperação</a>.</p></div>
+        </details>
+      </section>
+
+      <!-- ===================== 12 ===================== -->
+      <section class="chapter" id="atalhos">
+        <span class="chapter__num">12</span>
+        <h2>Atalhos e referência</h2>
+
+        <h3>Teclado e mouse no editor</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ação</th><th>Como</th></tr></thead>
+            <tbody>
+              <tr><td>Excluir o item selecionado</td><td><kbd>Delete</kbd> (com confirmação)</td></tr>
+              <tr><td>Fechar o painel lateral ou o filtro</td><td><kbd>Esc</kbd></td></tr>
+              <tr><td>Editar um item</td><td>Clique no item</td></tr>
+              <tr><td>Mover um item</td><td>Arraste o item</td></tr>
+              <tr><td>Reordenar barreiras</td><td>Arraste ao longo da linha, ou ↑ ↓ no painel</td></tr>
+              <tr><td>Mover a visão</td><td>Arraste o fundo do canvas</td></tr>
+              <tr><td>Zoom</td><td>Roda do mouse, ou + e − no canto do canvas</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Arquivos e pastas</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Caminho</th><th>Conteúdo</th></tr></thead>
+            <tbody>
+              <tr><td><code>bancos/&lt;projeto&gt;.db</code></td><td>O projeto, com todas as sessões, bowties e histórico.</td></tr>
+              <tr><td><code>bancos/index.json</code></td><td>A lista de projetos exibida na tela inicial.</td></tr>
+              <tr><td><code>bancos/&lt;projeto&gt;.db.lock.json</code></td><td>Quem está editando o projeto agora.</td></tr>
+              <tr><td><code>backups/</code></td><td>Cópias automáticas, 30 por projeto.</td></tr>
+              <tr><td><code>backups/nao-sincronizados/</code></td><td>Alterações que não puderam ser publicadas.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Glossário</h3>
+        <div class="table-wrap">
+          <table>
+            <tbody>
+              <tr><td><strong>Perigo</strong></td><td>A fonte de dano potencial (ex.: cloro armazenado).</td></tr>
+              <tr><td><strong>Evento de topo</strong></td><td>O momento em que se perde o controle sobre o perigo (ex.: perda de contenção).</td></tr>
+              <tr><td><strong>Ameaça</strong></td><td>Uma causa que pode levar ao evento de topo.</td></tr>
+              <tr><td><strong>Consequência</strong></td><td>Um resultado indesejado do evento de topo.</td></tr>
+              <tr><td><strong>Barreira preventiva</strong></td><td>Impede que uma ameaça cause o evento de topo.</td></tr>
+              <tr><td><strong>Barreira mitigatória</strong></td><td>Reduz a gravidade de uma consequência depois do evento.</td></tr>
+              <tr><td><strong>Sincronizar</strong></td><td>Publicar suas alterações na pasta compartilhada.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <a class="back-top" href="#">↑ Voltar ao topo</a>
+      </section>
+    </main>
+  </div>
+
+  <footer>
+    <div class="in">
+      <span>BTR Studio · BowTieRisk Studio · criado por <strong>Guilherme de Medeiros</strong></span>
+      <span><a href="./">Página inicial</a> · <a href="https://github.com/medeirosdev/BowTieRisk-Studio">Código-fonte</a> · <a href="https://github.com/medeirosdev/BowTieRisk-Studio/issues">Reportar um problema</a></span>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      try {
+        var saved = localStorage.getItem('btr-theme');
+        if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+      } catch (e) {}
+      document.getElementById('theme-btn').addEventListener('click', function () {
+        var current = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        var next = current === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem('btr-theme', next); } catch (e) {}
+      });
+    })();
+
+    // Destaca no sumário o capítulo que está na tela.
+    (function () {
+      var links = {};
+      document.querySelectorAll('#toc-list a').forEach(function (a) { links[a.getAttribute('href').slice(1)] = a; });
+      if (!('IntersectionObserver' in window)) return;
+      var visible = new Set();
+      var observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) visible.add(e.target.id); else visible.delete(e.target.id); });
+        var first = Array.prototype.find.call(document.querySelectorAll('.chapter'), function (s) { return visible.has(s.id); });
+        Object.keys(links).forEach(function (id) { links[id].classList.toggle('is-active', first && first.id === id); });
+      }, { rootMargin: '-70px 0px -55% 0px' });
+      document.querySelectorAll('.chapter').forEach(function (s) { observer.observe(s); });
+    })();
+  </script>
+</body>
+</html>

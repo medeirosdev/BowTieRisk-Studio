@@ -187,6 +187,7 @@
     .toc a { color: var(--muted); padding: 6px 12px; border-left: 2px solid var(--border); }
     .toc a:hover { color: var(--text); border-left-color: var(--accent); text-decoration: none; }
     .manual h3 { font-size: 1.3rem; margin: 0 0 18px; scroll-margin-top: 84px; }
+    #download { scroll-margin-top: 160px; }
     .manual h3:not(:first-child) { margin-top: 52px; }
     .steps { list-style: none; margin: 0; padding: 0; counter-reset: step; }
     .steps li { position: relative; padding: 0 0 22px 52px; counter-increment: step; }
@@ -246,7 +247,7 @@
       <a class="brand" href="#"><img src="img/logo.svg" alt=""> BTR Studio</a>
       <div class="nav__links">
         <a href="#recursos">Recursos</a>
-        <a href="#manual">Manual</a>
+        <a href="manual.html">Manual</a>
         <a href="#duvidas">Dúvidas</a>
         <a href="https://github.com/medeirosdev/BowTieRisk-Studio">GitHub</a>
       </div>
@@ -263,7 +264,7 @@
       <p class="hero__full">BowTieRisk Studio</p>
       <p class="hero__lead">Monte diagramas Bow Tie de ameaças, barreiras e consequências, e trabalhe em equipe numa pasta do SharePoint ou OneDrive. Sem servidor, sem instalação: é só baixar, extrair e abrir.</p>
 
-      <div class="downloads">
+      <div class="downloads" id="download">
         <a class="btn btn--primary" id="dl-windows" href="https://github.com/medeirosdev/BowTieRisk-Studio/releases/latest/download/BTR-Studio-windows-portatil.zip">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.1 10.4 4v7.1H3V5.1zm0 13.8 7.4 1.1v-7H3v5.9zm8.3 1.2L21 21.5v-8.6h-9.7v7.2zm0-16.2v7.2H21V2.5l-9.7 1.4z"/></svg>
           <span>Baixar para Windows<small>ZIP portátil · Windows 10 e 11</small></span>
@@ -328,7 +329,7 @@
       <div class="section-head">
         <span class="kicker">Manual rápido</span>
         <h2>Do download ao primeiro diagrama</h2>
-        <p>Cinco minutos de leitura. O app é todo em português e guia você pelo resto.</p>
+        <p>Cinco minutos de leitura. Para todos os detalhes, veja o <a href="manual.html">manual completo</a>.</p>
       </div>
 
       <div class="manual-grid">
@@ -473,6 +474,9 @@
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 5.1 10.4 4v7.1H3V5.1zm0 13.8 7.4 1.1v-7H3v5.9zm8.3 1.2L21 21.5v-8.6h-9.7v7.2zm0-16.2v7.2H21V2.5l-9.7 1.4z"/></svg>
           <span>Baixar para Windows<small>ZIP portátil</small></span>
         </a>
+        <a class="btn btn--ghost" href="manual.html">
+          <span>Manual completo<small>instalação, uso e equipe</small></span>
+        </a>
         <a class="btn btn--ghost" href="https://github.com/medeirosdev/BowTieRisk-Studio/releases">
           <span>Todas as versões<small>notas e downloads anteriores</small></span>
         </a>
@@ -483,7 +487,7 @@
   <footer>
     <div class="wrap">
       <span>BTR Studio · BowTieRisk Studio · criado por <strong>Guilherme de Medeiros</strong></span>
-      <span><a href="https://github.com/medeirosdev/BowTieRisk-Studio">Código-fonte no GitHub</a></span>
+      <span><a href="manual.html">Manual</a> · <a href="https://github.com/medeirosdev/BowTieRisk-Studio">Código-fonte no GitHub</a></span>
     </div>
   </footer>
 
